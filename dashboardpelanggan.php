@@ -238,6 +238,7 @@ try {
         <div>
             <a href="dashboardpelanggan.php" class="active">Dashboard</a>
             <a href="pesanproduk.php">Pesan Produk</a>
+            <a href="keranjang.php"><i class="fa-solid fa-cart-shopping" style="color: #ffffff;"></i></a>
             <a href="logout.php">Logout</a>
         </div>
     </div>

@@ -8,6 +8,7 @@ $user_id = $_SESSION['user_id'];
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
   <style>
      body {
@@ -222,6 +223,7 @@ $user_id = $_SESSION['user_id'];
     <div>
       <a href="dashboardpelanggan.php">Dashboard</a>
       <a href="pesanproduk.php" class="active">Pesan Produk</a>
+      <a href="keranjang.php"><i class="fa-solid fa-cart-shopping" style="color: #ffffff;"></i></a>
       <a href="logout.php">Logout</a>
     </div>
   </div>
@@ -249,14 +251,15 @@ $user_id = $_SESSION['user_id'];
                     <p><?php echo htmlspecialchars($row['namaproduk']); ?></p>
                     <p>Rp <?php echo htmlspecialchars($row['hargajual']); ?></p>
                     <p>Stok: <?php echo $row['stok']; ?></p>
-                    <form action="prosespesanan.php" method="POST">
+                    <form action="tambahkeranjang.php" method="POST">
                     <div class="quantity-controls">
                         <input type="hidden" name="idproduct" value="<?php echo htmlspecialchars($row['idproduk']); ?>">
+                        <input type="hidden" name="hargajual" value="<?php echo htmlspecialchars($row['hargajual']); ?>">
                         <button class="decrement-btn" type="button">-</button>
                         <input type="number" name="jumlah" class="quantity-input" value="1" min="1" max="<?php echo $row['stok']; ?>">
                         <button class="increment-btn" type="button">+</button>
                     </div>
-                    <button class="order-btn" type="submit" name="pesan">Pesan Sekarang</button>
+                    <button class="order-btn" type="submit" name="tambah">Tambahkan ke keranjang</button>
                     </form>
                 </div>
                 <?php
