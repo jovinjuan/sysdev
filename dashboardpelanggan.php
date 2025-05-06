@@ -1,10 +1,30 @@
 <?php
 require "config.php";
 
-$user_id = $_SESSION['user_id'];
-$username = $_SESSION['username'];
+$user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;
+$username = isset($_SESSION['username']) ? $_SESSION['username'] : 'User';
 
+if (!$user_id) {
+    header("Location: login.php");
+    exit();
+}
+
+// Fetch all orders for the user using PDO
+try {
+    $sql = "SELECT p.idpesanan, p.jumlah, p.status, p.totalharga, pr.namaproduk 
+            FROM pesanan p 
+            JOIN produk pr ON p.idproduk = pr.idproduk 
+            WHERE p.idpengguna = :user_id ";
+    $query = $conn->prepare($sql);
+    $query->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+    $query->execute();
+    $orders = $query->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    // Handle error (e.g., log it or display a generic message)
+    $orders = [];
+}
 ?>
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -32,13 +52,12 @@ $username = $_SESSION['username'];
             justify-content: space-between;
             align-items: center;
             box-sizing: border-box;
-        
         }
         .navbar h2 {
             margin: 0;
             color: #ffffff;
-            font-size : 1.48rem;
-            padding : 2px;
+            font-size: 1.48rem;
+            padding: 2px;
         }
         .navbar a {
             color: #ffffff;
@@ -142,15 +161,41 @@ $username = $_SESSION['username'];
         .tracker-step {
             text-align: center;
             z-index: 1;
+            position: relative;
         }
         .tracker-step i {
             font-size: 1.5rem;
             color: #f59e0b;
+            transition: transform 0.3s ease;
+        }
+        .tracker-step.current i {
+            transform: scale(1.1);
+        }
+        .tracker-step .circle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -85%);
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(136, 129, 123, 0.4);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: -1;
+        }
+        .tracker-step.current .circle {
+            opacity: 1;
+            border-color: #e07a5f;
         }
         .tracker-step p {
             margin: 0.25rem 0 0;
             font-size: 0.8rem;
             color: #d1d5db;
+        }
+        .tracker-step.current p {
+            color: #e07a5f;
+            font-weight: 700;
         }
         .tracker-line {
             position: absolute;
@@ -161,6 +206,9 @@ $username = $_SESSION['username'];
             background-color: #f59e0b;
             opacity: 0.3;
             z-index: 0;
+        }
+        .circle{
+            
         }
         @media (max-width: 768px) {
             .content {
@@ -184,45 +232,58 @@ $username = $_SESSION['username'];
     </style>
 </head>
 <body>
+    <!-- Navbar -->
     <div class="navbar">
-    <h2 class = "fw-bold">Sistem Gudang</h2>
+        <h2 class="fw-bold">Sistem Gudang</h2>
         <div>
-        <a href="dashboardpelanggan.php" class="active">Dashboard</a>
-        <a href="pesanproduk.php">Pesan Produk</a>
-        <a href="pantaupengiriman.php">Pantau Pengiriman</a>
-        <a href="#">Logout</a>
+            <a href="dashboardpelanggan.php" class="active">Dashboard</a>
+            <a href="pesanproduk.php">Pesan Produk</a>
+            <a href="logout.php">Logout</a>
         </div>
     </div>
 
     <!-- Content -->
     <div class="content">
         <div class="dashboard-container">
-            <h2 class="header-title mb-5">Selamat Datang, <?php echo $username ; ?></h2>
-            <div class="order-section">
-                <h4>Pesanan Terbaru</h4>
-                <div class="order-card">
-                    <p>ORD001 - Kardus 20x20 (50) - Rp 2.500.000</p>
-                    <p>Status: Dikirim</p>
-                </div>
-                <div class="tracker">
-                    <div class="tracker-step">
-                        <i class="fas fa-box"></i>
-                        <p>Diproses</p>
+            <h2 class="header-title mb-5">Selamat Datang, <?php echo htmlspecialchars($username); ?></h2>
+                <?php if ($orders): ?>
+                    <?php foreach ($orders as $order): ?>
+                    <div class="order-section my-5">
+                        <h4>Pesanan</h4>
+                        <div class="order-card mb-5">
+                            <p>ORD<?php echo str_pad($order['idpesanan'], 3, '0', STR_PAD_LEFT); ?> - <?php echo $order['namaproduk']; ?> (<?php echo $order['jumlah']; ?>) - Rp <?php echo number_format($order['totalharga'], 0, ',', '.'); ?></p>
+                            <p class="status">Status: <?php echo $order['status']; ?></p>
+                        </div>
+                        <div class="tracker">
+                            <?php
+                            $steps = ['Diproses', 'Dikirim', 'Selesai'];
+                            $currentIndex = array_search($order['status'], $steps);
+                            ?>
+                            <div class="tracker-step <?php echo $currentIndex === 0 ? 'current' : ''; ?>">
+                                <i class="fas fa-box mb-3"></i>
+                                <div class="circle"></div>
+                                <p>Diproses</p>
+                            </div>
+                            <div class="tracker-step <?php echo $currentIndex === 1 ? 'current' : ''; ?>">
+                                <i class="fas fa-truck mb-3"></i>
+                                <div class="circle"></div>
+                                <p>Dikirim</p>
+                            </div>
+                            <div class="tracker-step <?php echo $currentIndex === 2 ? 'current' : ''; ?>">
+                                <i class="fas fa-check-circle mb-3"></i>
+                                <div class="circle"></div>
+                                <p>Selesai</p>
+                            </div>
+                            <div class="tracker-line"></div>
+                        </div>
                     </div>
-                    <div class="tracker-step">
-                        <i class="fas fa-truck"></i>
-                        <p>Dikirim</p>
-                    </div>
-                    <div class="tracker-step">
-                        <i class="fas fa-check-circle"></i>
-                        <p>Selesai</p>
-                    </div>
-                    <div class="tracker-line"></div>
-                </div>
-                <a href="pantau_pengiriman.php" class="btn btn-custom mt-3">Lihat Detail Pengiriman</a>
-            </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <p>Tidak ada pesanan terbaru.</p>
+                <?php endif; ?>
         </div>
     </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 </body>
 </html>
