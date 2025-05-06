@@ -15,18 +15,16 @@ if (isset($_POST['simpan'])) {
         if ($cekNama->rowCount() > 0) {
             // Nama ditemukan, sekarang cek password
             $user = $cekNama->fetch(PDO::FETCH_ASSOC);
-            if($password = $user['password']){
-            if ($user['level'] === "Admin") {
-                $_SESSION['admin_id'] = $user['id'];
-                $_SESSION['username'] = $user['nama'];
-                header("Location: dashboardadmin.php");
-                exit;
-            } 
-        }
 
             if (password_verify($password, $user['password'])) {
                 // Password cocok
-               if ($user['level'] === "User") {
+                if ($user['level'] === "Admin") {
+                    $_SESSION['admin_id'] = $user['id'];
+                    $_SESSION['username'] = $user['nama'];
+                    header("Location: dashboardadmin.php");
+                    exit;
+                }       
+               else if ($user['level'] === "User") {
                     $_SESSION['user_id'] = $user['id'];
                     $_SESSION['username'] = $user['nama'];
                     header("Location: dashboardpelanggan.php");
