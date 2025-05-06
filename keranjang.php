@@ -1,6 +1,11 @@
 <?php
 require "config.php";
-$user_id = $_SESSION['user_id'];
+$user_id = $_SESSION['user_id'] ?? null;
+
+if (!$user_id) {
+    header("Location: login.php");
+    exit();
+}
 
 // Handle clear cart action
 if (isset($_GET['clear']) && $_GET['clear'] === 'true') {
@@ -9,6 +14,22 @@ if (isset($_GET['clear']) && $_GET['clear'] === 'true') {
     $stmt->execute();
     header("Location: keranjang.php");
     exit();
+}
+
+// Handle update alamat
+$alamat = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_alamat'])) {
+    $alamat_input = $_POST['alamat'] ?? '';
+    if (!empty($alamat_input)) {
+        $stmt = $conn->prepare("UPDATE keranjang SET alamat = :alamat WHERE idpengguna = :user_id");
+        $stmt->bindParam(':alamat', $alamat_input);
+        $stmt->bindParam(':user_id', $user_id);
+        $stmt->execute();
+        header("Location: keranjang.php");
+        exit();
+    } else {
+        $error = "Alamat wajib diisi.";
+    }
 }
 
 // Fetch cart items with product details
@@ -22,8 +43,8 @@ $stmt->bindParam(':user_id', $user_id);
 $stmt->execute();
 $cart_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Fetch user details (assuming a pengguna table exists)
-$user_stmt = $conn->prepare("SELECT alamat, telepon FROM pengguna WHERE id = :user_id");
+// Fetch user details (telepon only)
+$user_stmt = $conn->prepare("SELECT telepon FROM pengguna WHERE id = :user_id");
 $user_stmt->bindParam(':user_id', $user_id);
 $user_stmt->execute();
 $user = $user_stmt->fetch(PDO::FETCH_ASSOC);
@@ -40,9 +61,9 @@ foreach ($cart_items as $item) {
 
 $grand_total = $subtotal + $total_biayapengiriman;
 
-// Default values if user details are not found
-$alamat = $user['alamat'] ?? 'Jl. Mawar No. 10, Jakarta';
+// Default telepon if not found
 $telepon = $user['telepon'] ?? '081234567890';
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -194,7 +215,11 @@ $telepon = $user['telepon'] ?? '081234567890';
         <?php } ?>
 
         <div class="cart-details">
-          <p><strong>Alamat:</strong> <?php echo htmlspecialchars($alamat); ?></p>
+            <label for="alamat" class="form-label text-white fs-5"><strong>Alamat Pengiriman:</strong></label>
+            <textarea class="form-control mt-3 mb-3" id="alamat" name="alamat" rows="3" placeholder="Masukkan alamat pengiriman" required><?php echo htmlspecialchars($alamat); ?></textarea>
+          <?php if (isset($error)): ?>
+            <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
+          <?php endif; ?>
           <p><strong>Telepon:</strong> <?php echo htmlspecialchars($telepon); ?></p>
           <p><strong>Biaya Pengiriman:</strong> Rp <?php echo number_format($total_biayapengiriman, 0, ',', '.'); ?></p>
         </div>
