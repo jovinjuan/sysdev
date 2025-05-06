@@ -10,7 +10,8 @@ if(isset($admin_id)){
         u.nama AS customer_name, 
         p.namaproduk, 
         o.jumlah, 
-        o.status
+        o.status,
+        o.alamatpengiriman
     FROM pesanan o
     JOIN produk p ON o.idproduk = p.idproduk
     JOIN pengguna u ON o.idpengguna = u.id
@@ -19,7 +20,6 @@ if(isset($admin_id)){
     $query->execute();
     $orders = $query->fetchAll(PDO::FETCH_ASSOC);
     }
-
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -161,7 +161,7 @@ if(isset($admin_id)){
         <h4 class="text-white text-center mb-4">Sistem Gudang</h4>
         <ul class="nav flex-column">
             <li class="nav-item">
-                <a class="nav-link" href="index.php"><i class="fas fa-home"></i><span>Home</span></a>
+                <a class="nav-link" href="dashboardadmin.php"><i class="fas fa-home"></i><span>Home</span></a>
             </li>
             <li class="nav-item">
                 <a class="nav-link active" href="pesanan.php"><i class="fas fa-shopping-cart"></i><span>Pesanan</span></a>
@@ -189,19 +189,23 @@ if(isset($admin_id)){
                         <th>Nama Pelanggan</th>
                         <th>Nama Produk</th>
                         <th>Jumlah Pesanan</th>
+                        <th>Alamat Pengiriman</th>
                         <th>Status Pesanan</th>
                         <th>Aksi</th>
                     </tr>
-                <?php if (count($orders) > 0): ?>
+                <?php if (count($orders) > 0): 
+                    $i = 1 ;
+                ?>
                         <?php foreach ($orders as $order): ?>
                             <tr>
-                                <td><?php echo htmlspecialchars($order['idpesanan']); ?></td>
+                                <td><?php echo $i++ ;?></td>
                                 <td><?php echo htmlspecialchars($order['customer_name']); ?></td>
                                 <td><?php echo htmlspecialchars($order['namaproduk']); ?></td>
                                 <td><?php echo htmlspecialchars($order['jumlah']); ?></td>
+                                <td><?php echo htmlspecialchars($order['alamatpengiriman']); ?></td>
                                 <td><?php echo htmlspecialchars($order['status']); ?></td>
                                 <td>
-                                    <a href="update_order_status.php?idpesanan=<?php echo $order['idpesanan']; ?>&status=Dikirim" class="btn btn-sm btn-custom">Update Status</a>
+                                    <a href="updatestatuspesanan.php?idpesanan=<?php echo $order['idpesanan']; ?>&status=Dikirim" class="btn btn-sm btn-custom">Update Status</a>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

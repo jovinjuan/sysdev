@@ -138,7 +138,7 @@
         <h4 class="text-white text-center mb-4">Sistem Gudang</h4>
         <ul class="nav flex-column">
             <li class="nav-item">
-                <a class="nav-link" href="index.php"><i class="fas fa-home"></i><span>Home</span></a>
+                <a class="nav-link" href="dashboardadmin.php"><i class="fas fa-home"></i><span>Home</span></a>
             </li>
             <li class="nav-item">
                 <a class="nav-link " href="pesanan.php"><i class="fas fa-shopping-cart"></i><span>Pesanan</span></a>

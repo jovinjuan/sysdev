@@ -1,4 +1,5 @@
 <?php
+session_start();
 require "config.php";
 
 $user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;
@@ -9,12 +10,12 @@ if (!$user_id) {
     exit();
 }
 
-// Fetch all orders for the user using PDO
+// Fetch all orders for the user, excluding those with status "Selesai"
 try {
     $sql = "SELECT p.idpesanan, p.jumlah, p.status, p.totalharga, pr.namaproduk 
             FROM pesanan p 
             JOIN produk pr ON p.idproduk = pr.idproduk 
-            WHERE p.idpengguna = :user_id ";
+            WHERE p.idpengguna = :user_id AND p.status != 'Selesai'";
     $query = $conn->prepare($sql);
     $query->bindParam(':user_id', $user_id, PDO::PARAM_INT);
     $query->execute();
@@ -22,6 +23,41 @@ try {
 } catch (PDOException $e) {
     // Handle error (e.g., log it or display a generic message)
     $orders = [];
+}
+
+// Proses konfirmasi penerimaan
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'confirm' && isset($_POST['order_id'])) {
+    $order_id = $_POST['order_id'];
+
+    try {
+        // Pastikan pesanan milik pengguna dan status saat ini adalah "Dikirim"
+        $sql = "SELECT status FROM pesanan WHERE idpesanan = :order_id AND idpengguna = :user_id";
+        $query = $conn->prepare($sql);
+        $query->bindParam(':order_id', $order_id, PDO::PARAM_INT);
+        $query->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+        $query->execute();
+        $order = $query->fetch(PDO::FETCH_ASSOC);
+
+        if ($order && $order['status'] === 'Dikirim') {
+            // Update status menjadi "Selesai"
+            $sql = "UPDATE pesanan SET status = 'Selesai' WHERE idpesanan = :order_id AND idpengguna = :user_id";
+            $query = $conn->prepare($sql);
+            $query->bindParam(':order_id', $order_id, PDO::PARAM_INT);
+            $query->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+            $query->execute();
+
+            // Tampilkan pesan sukses dan refresh halaman
+            echo "<script>alert('Terima kasih! Status pesanan telah diperbarui.'); window.location.href='dashboardpelanggan.php';</script>";
+            exit();
+        } else {
+            echo "<script>alert('Gagal memperbarui status. Pesanan belum dikirim atau tidak valid.'); window.location.href='dashboardpelanggan.php';</script>";
+            exit();
+        }
+    } catch (PDOException $e) {
+        echo "<script>alert('Terjadi kesalahan. Silakan coba lagi.'); window.location.href='dashboardpelanggan.php';</script>";
+        // Log error jika perlu
+        exit();
+    }
 }
 ?>
 
@@ -207,9 +243,6 @@ try {
             opacity: 0.3;
             z-index: 0;
         }
-        .circle{
-            
-        }
         @media (max-width: 768px) {
             .content {
                 padding: 5rem 1rem 1rem;
@@ -247,13 +280,13 @@ try {
     <div class="content">
         <div class="dashboard-container">
             <h2 class="header-title mb-5">Selamat Datang, <?php echo htmlspecialchars($username); ?></h2>
-                <?php if ($orders): ?>
-                    <?php foreach ($orders as $order): ?>
+            <?php if ($orders): ?>
+                <?php foreach ($orders as $order): ?>
                     <div class="order-section my-5">
                         <h4>Pesanan</h4>
                         <div class="order-card mb-5">
-                            <p>ORD<?php echo str_pad($order['idpesanan'], 3, '0', STR_PAD_LEFT); ?> - <?php echo $order['namaproduk']; ?> (<?php echo $order['jumlah']; ?>) - Rp <?php echo number_format($order['totalharga'], 0, ',', '.'); ?></p>
-                            <p class="status">Status: <?php echo $order['status']; ?></p>
+                            <p>ORD<?php echo str_pad($order['idpesanan'], 3, '0', STR_PAD_LEFT); ?> - <?php echo htmlspecialchars($order['namaproduk']); ?> (<?php echo htmlspecialchars($order['jumlah']); ?>) - Rp <?php echo number_format($order['totalharga'], 0, ',', '.'); ?></p>
+                            <p class="status">Status: <?php echo htmlspecialchars($order['status']); ?></p>
                         </div>
                         <div class="tracker">
                             <?php
@@ -277,14 +310,20 @@ try {
                             </div>
                             <div class="tracker-line"></div>
                         </div>
+                        <!-- Form untuk konfirmasi penerimaan -->
+                        <form method="POST" action="" onsubmit="return confirm('Apakah Anda yakin telah menerima pesanan ini?');">
+                            <input type="hidden" name="order_id" value="<?php echo htmlspecialchars($order['idpesanan']); ?>">
+                            <input type="hidden" name="action" value="confirm">
+                            <button type="submit" class="btn btn-success mt-3" 
+                                    <?php echo $order['status'] !== 'Dikirim' ? 'disabled' : ''; ?>>Terima</button>
+                        </form>
                     </div>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <p>Tidak ada pesanan terbaru.</p>
-                <?php endif; ?>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <p class="text-center">Tidak ada pesanan aktif saat ini.</p>
+            <?php endif; ?>
         </div>
     </div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 </body>
 </html>
