@@ -1,9 +1,13 @@
+<?php
+require "config.php";
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
   <style>
      body {
             background-color: #1a2b3c;
@@ -27,8 +31,8 @@
     .navbar h2 {
       color: #ffffff;
       margin: 0;
-      font-size : 1.49rem;
-      padding : 2px;
+      font-size: 1.49rem;
+      padding: 2px;
     }
     .navbar a {
       color: #ffffff;
@@ -40,7 +44,7 @@
       color: #f59e0b;
     }
     .content {
-      padding: 5rem 20px 20px; /* Adjusted to account for fixed navbar */
+      padding: 5rem 20px 20px;
     }
     .container {
       max-width: 1200px;
@@ -54,24 +58,46 @@
       margin-bottom: 30px;
       letter-spacing: 1px;
     }
+    .search-container {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      margin-bottom: 30px;
+    }
     .search-bar {
       width: 100%;
       padding: 12px;
-      margin-bottom: 30px;
       border: none;
-      border-radius: 25px;
+      border-radius: 25px 0 0 25px;
       background-color: #2a3b4c;
       color: #e5e5e5;
       font-size: 14px;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
       outline: none;
       transition: background-color 0.3s ease;
+      flex-grow: 1;
     }
     .search-bar::placeholder {
       color: #a0a0a0;
     }
     .search-bar:focus {
       background-color: #334455;
+    }
+    .search-button {
+      padding: 12px 15px;
+      border: none;
+      border-radius: 0 25px 25px 0;
+      background-color: #e67e22;
+      color: white;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .search-button:hover {
+      background-color: #f39c12;
     }
     .products {
       display: grid;
@@ -98,7 +124,7 @@
       background: linear-gradient(135deg, rgba(241, 196, 15, 0.1), transparent);
       opacity: 0;
       transition: opacity 0.3s ease;
-      z-index: 1; /* Ensure pseudo-element is below interactive elements */
+      z-index: 1;
     }
     .product-card:hover::before {
       opacity: 1;
@@ -112,7 +138,7 @@
       font-size: 0.9rem;
       color: #bdc3c7;
       position: relative;
-      z-index: 2; /* Ensure text is above pseudo-element */
+      z-index: 2;
     }
     .product-card p:first-child {
       font-weight: 600;
@@ -131,7 +157,7 @@
       background: rgba(255, 255, 255, 0.05);
       border-radius: 10px;
       position: relative;
-      z-index: 3; /* Ensure quantity controls are above pseudo-element */
+      z-index: 3;
     }
     .quantity-controls button {
       background: linear-gradient(135deg, #e67e22, #d35400);
@@ -177,23 +203,26 @@
       letter-spacing: 1px;
       transition: background 0.3s ease, transform 0.2s ease;
       position: relative;
-      z-index: 2; /* Ensure order button is above pseudo-element */
+      z-index: 2;
     }
     .product-card button.order-btn:hover {
       background: linear-gradient(135deg, #ff6b6b, #e74c3c);
       transform: scale(1.03);
+    }
+    .hidden {
+      display: none;
     }
   </style>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
   <div class="navbar">
-    <h2 class = "fw-bold">Sistem Gudang</h2>
+    <h2 class="fw-bold">Sistem Gudang</h2>
     <div>
       <a href="dashboardpelanggan.php">Dashboard</a>
       <a href="pesanproduk.php" class="active">Pesan Produk</a>
       <a href="pantaupengiriman.php">Pantau Pengiriman</a>
-      <a href="#">Logout</a>
+      <a href="logout.php">Logout</a>
     </div>
   </div>
 
@@ -201,70 +230,46 @@
     <div class="container">
       <div class="welcome fs-2 mt-3">Katalog Produk</div>
       
-      <input type="text" class="search-bar" placeholder="Cari produk...">
+      <div class="search-container">
+        <input type="text" class="search-bar" placeholder="Cari produk..." id="searchBar">
+        <button class="search-button" id="searchButton"><i class="bi bi-search"></i></button>
+      </div>
       
-      <div class="products">
-        <div class="product-card">
-          <p>Kardus 20x20</p>
-          <p>Rp 50.000</p>
-          <p>Stok: 150</p>
-          <div class="quantity-controls">
-            <button class="decrement-btn">-</button>
-            <input type="number" class="quantity-input" value="1" min="1" max="150">
-            <button class="increment-btn">+</button>
-          </div>
-          <button class="order-btn">Pesan Sekarang</button>
-        </div>
-        <div class="product-card">
-          <p>Plastik Kemasan</p>
-          <p>Rp 10.000</p>
-          <p>Stok: 300</p>
-          <div class="quantity-controls">
-            <button class="decrement-btn">-</button>
-            <input type="number" class="quantity-input" value="1" min="1" max="300">
-            <button class="increment-btn">+</button>
-          </div>
-          <button class="order-btn">Pesan Sekarang</button>
-        </div>
-        <div class="product-card">
-          <p>Botol 500ml</p>
-          <p>Rp 20.000</p>
-          <p>Stok: 500</p>
-          <div class="quantity-controls">
-            <button class="decrement-btn">-</button>
-            <input type="number" class="quantity-input" value="1" min="1" max="500">
-            <button class="increment-btn">+</button>
-          </div>
-          <button class="order-btn">Pesan Sekarang</button>
-        </div>
-        <div class="product-card">
-          <p>Kardus Besar</p>
-          <p>Rp 75.000</p>
-          <p>Stok: 200</p>
-          <div class="quantity-controls">
-            <button class="decrement-btn">-</button>
-            <input type="number" class="quantity-input" value="1" min="1" max="200">
-            <button class="increment-btn">+</button>
-          </div>
-          <button class="order-btn">Pesan Sekarang</button>
-        </div>
-        <div class="product-card">
-          <p>Plastik Tebal</p>
-          <p>Rp 15.000</p>
-          <p>Stok: 250</p>
-          <div class="quantity-controls">
-            <button class="decrement-btn">-</button>
-            <input type="number" class="quantity-input" value="1" min="1" max="250">
-            <button class="increment-btn">+</button>
-          </div>
-          <button class="order-btn">Pesan Sekarang</button>
-        </div>
+      <div class="products" id="productsContainer">
+      <?php
+        $sql = "SELECT * FROM produk"; 
+        $query = $conn->prepare($sql);
+        $query->execute();
+        $result = $query->fetchAll(PDO::FETCH_ASSOC);
+
+        if (count($result) > 0) {
+            foreach ($result as $row) {
+                ?>
+                <div class="product-card" data-name="<?php echo htmlspecialchars(strtolower($row['namaproduk'])); ?>">
+                    <p><?php echo htmlspecialchars($row['namaproduk']); ?></p>
+                    <p>Rp <?php echo htmlspecialchars($row['hargajual']); ?></p>
+                    <p>Stok: <?php echo $row['stok']; ?></p>
+                    <div class="quantity-controls">
+                        <button class="decrement-btn">-</button>
+                        <input type="number" class="quantity-input" value="1" min="1" max="<?php echo $row['stok']; ?>">
+                        <button class="increment-btn">+</button>
+                    </div>
+                    <button class="order-btn">Pesan Sekarang</button>
+                </div>
+                <?php
+            }
+        } else {
+            echo "<p>Tidak ada produk tersedia.</p>";
+        }
+      ?>
       </div>
     </div>
   </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
   <script>
-     document.querySelectorAll('.quantity-controls').forEach(control => {
+    // Quantity controls functionality
+    document.querySelectorAll('.quantity-controls').forEach(control => {
       const decrementBtn = control.querySelector('.decrement-btn');
       const incrementBtn = control.querySelector('.increment-btn');
       const input = control.querySelector('.quantity-input');
@@ -292,6 +297,41 @@
         if (value < min) input.value = min;
         if (value > max) input.value = max;
       });
+    });
+
+    // Search functionality
+    const searchBar = document.getElementById('searchBar');
+    const searchButton = document.getElementById('searchButton');
+    const productsContainer = document.getElementById('productsContainer');
+    const productCards = productsContainer.querySelectorAll('.product-card');
+
+    searchButton.addEventListener('click', () => {
+      const searchQuery = searchBar.value.toLowerCase().trim();
+
+      productCards.forEach(card => {
+        const productName = card.getAttribute('data-name');
+        if (productName.includes(searchQuery)) {
+          card.classList.remove('hidden');
+        } else {
+          card.classList.add('hidden');
+        }
+      });
+
+      // Show "No products" message if no matches found
+      const visibleCards = productsContainer.querySelectorAll('.product-card:not(.hidden)');
+      if (visibleCards.length === 0) {
+        if (!productsContainer.querySelector('.no-products')) {
+          const noProductsMessage = document.createElement('p');
+          noProductsMessage.className = 'no-products';
+          noProductsMessage.textContent = 'Tidak ada produk yang cocok.';
+          productsContainer.appendChild(noProductsMessage);
+        }
+      } else {
+        const noProductsMessage = productsContainer.querySelector('.no-products');
+        if (noProductsMessage) {
+          noProductsMessage.remove();
+        }
+      }
     });
   </script>
 </body>
