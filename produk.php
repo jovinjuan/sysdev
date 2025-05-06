@@ -1,9 +1,28 @@
+<?php
+require_once 'config.php';
+
+if (!cekLogin()) {
+    header("Location: login.php");
+    exit;
+}
+
+// Fetch products from database
+$products = [];
+try {
+    $stmt = $conn->query("SELECT idproduk, namaproduk, hargajual, stok FROM produk ORDER BY idproduk ASC");
+    $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    // Handle error, e.g., log it or display a user-friendly message
+    // For now, we'll let $products remain empty, and the table will show no data.
+    error_log("Error fetching products: " . $e->getMessage());
+}
+?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pesanan - Sistem Gudang</title>
+    <title>Produk - Sistem Gudang</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
@@ -159,74 +178,57 @@
     <div class="content">
         <div class="dashboard-container">
             <h2 class="header-title text-center mb-4 fw-bold">Daftar Produk</h2>
+
+            <?php if (isset($_SESSION['success_message'])): ?>
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <?php echo htmlspecialchars($_SESSION['success_message']); ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                <?php unset($_SESSION['success_message']); ?>
+            <?php endif; ?>
+
+            <?php if (isset($_SESSION['error_message'])): ?>
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <?php echo htmlspecialchars($_SESSION['error_message']); ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                <?php unset($_SESSION['error_message']); ?>
+            <?php endif; ?>
+
             <div class="d-flex justify-content-end mb-3">
-                <a href="#" class="btn btn-custom mb-5">Tambah Produk Baru</a>
+                <a href="tambah_produk.php" class="btn btn-custom mb-5">Tambah Produk Baru</a>
             </div>
             <div class="table-responsive">
                 <table class="table table-custom">
-                    <tr>
-                        <th>ID Produk</th>
-                        <th>Nama Produk</th>
-                        <th>Kategori</th>
-                        <th>Stok</th>
-                        <th>Lokasi Gudang</th>
-                        <th>Aksi</th>
-                    </tr>
-                    <tr>
-                        <td>PROD001</td>
-                        <td>Kardus 20x20</td>
-                        <td>Packing Material</td>
-                        <td>150</td>
-                        <td>Rak A-01</td>
-                        <td>
-                            <a href="#" class="btn btn-sm btn-custom">Detail</a>
-                            <a href="#" class="btn btn-sm btn-custom">Edit</a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>PROD002</td>
-                        <td>Plastik Kemasan</td>
-                        <td>Packing Material</td>
-                        <td>300</td>
-                        <td>Rak B-02</td>
-                        <td>
-                            <a href="#" class="btn btn-sm btn-custom">Detail</a>
-                            <a href="#" class="btn btn-sm btn-custom">Edit</a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>PROD003</td>
-                        <td>Botol 500ml</td>
-                        <td>Container</td>
-                        <td>500</td>
-                        <td>Rak C-03</td>
-                        <td>
-                            <a href="#" class="btn btn-sm btn-custom">Detail</a>
-                            <a href="#" class="btn btn-sm btn-custom">Edit</a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>PROD004</td>
-                        <td>Kotak Kayu</td>
-                        <td>Packing Material</td>
-                        <td>80</td>
-                        <td>Rak A-02</td>
-                        <td>
-                            <a href="#" class="btn btn-sm btn-custom">Detail</a>
-                            <a href="#" class="btn btn-sm btn-custom">Edit</a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>PROD005</td>
-                        <td>Palet Plastik</td>
-                        <td>Storage</td>
-                        <td>200</td>
-                        <td>Rak D-01</td>
-                        <td>
-                            <a href="#" class="btn btn-sm btn-custom">Detail</a>
-                            <a href="#" class="btn btn-sm btn-custom">Edit</a>
-                        </td>
-                    </tr>
+                    <thead>
+                        <tr>
+                            <th>ID Produk</th>
+                            <th>Nama Produk</th>
+                            <th>Harga Jual</th>
+                            <th>Stok</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (count($products) > 0): $i = 1 ?>
+                            <?php foreach ($products as $product): ?>
+                                <tr>
+                                    <td><?php echo $i++ ;?></td>
+                                    <td><?php echo htmlspecialchars($product['namaproduk']); ?></td>
+                                    <td>Rp <?php echo number_format($product['hargajual'], 0, ',', '.'); ?></td>
+                                    <td><?php echo htmlspecialchars($product['stok']); ?></td>
+                                    <td>
+                                        <a href="edit_produk.php?id=<?php echo $product['idproduk']; ?>" class="btn btn-sm btn-custom">Edit</a>
+                                        <a href="hapus_produk.php?id=<?php echo $product['idproduk']; ?>" class="btn btn-sm btn-custom" onclick="return confirm('Apakah Anda yakin ingin menghapus produk ini?');">Delete</a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="5" class="text-center text-white">Tidak ada data produk.</td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
                 </table>
             </div>
         </div>

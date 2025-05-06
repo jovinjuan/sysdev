@@ -1,9 +1,29 @@
+<?php
+require_once 'config.php';
+
+if (!cekLogin()) {
+    header("Location: login.php");
+    exit;
+}
+
+// Fetch sales data from database
+$sales = [];
+try {
+    // Selecting a subset of columns for display simplicity, adjust as needed
+    $stmt = $conn->query("SELECT idpenjualan, tanggalpenjualan, notajual, namabarang, jumlah, grandtotal FROM penjualan ORDER BY tanggalpenjualan DESC, idpenjualan DESC");
+    $sales = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    // Handle error
+    error_log("Error fetching sales: " . $e->getMessage());
+    $_SESSION['error_message'] = "Gagal mengambil data penjualan: " . $e->getMessage();
+}
+?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pesanan - Sistem Gudang</title>
+    <title>Penjualan - Sistem Gudang</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
@@ -159,87 +179,61 @@
     <div class="content">
         <div class="dashboard-container">
             <h2 class="header-title text-center mb-4 fw-bold">Daftar Penjualan</h2>
+
+            <?php if (isset($_SESSION['success_message'])): ?>
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <?php echo htmlspecialchars($_SESSION['success_message']); ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                <?php unset($_SESSION['success_message']); ?>
+            <?php endif; ?>
+
+            <?php if (isset($_SESSION['error_message'])): ?>
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <?php echo htmlspecialchars($_SESSION['error_message']); ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                <?php unset($_SESSION['error_message']); ?>
+            <?php endif; ?>
+
             <div class="d-flex justify-content-end mb-3">
-                <a href="#" class="btn btn-success mb-5 mx-3">Cetak Laporan</a>
-                <a href="#" class="btn btn-custom mb-5">Tambah Penjualan Baru</a>
+                <a href="tambah_penjualan.php" class="btn btn-custom mb-5">Tambah Penjualan Baru</a>
             </div>
             <div class="table-responsive">
                 <table class="table table-custom">
-                    <tr>
-                        <th>ID Penjualan</th>
-                        <th>Tanggal</th>
-                        <th>Nama Pelanggan</th>
-                        <th>Produk</th>
-                        <th>Jumlah</th>
-                        <th>Total Harga</th>
-                        <th>Status</th>
-                        <th>Aksi</th>
-                    </tr>
-                    <tr>
-                        <td>SALE001</td>
-                        <td>2025-05-01</td>
-                        <td>John Doe</td>
-                        <td>Kardus 20x20</td>
-                        <td>50</td>
-                        <td>Rp 2.500.000</td>
-                        <td>Lunas</td>
-                        <td>
-                            <a href="#" class="btn btn-sm btn-custom">Detail</a>
-                            <a href="#" class="btn btn-sm btn-custom">Edit</a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>SALE002</td>
-                        <td>2025-05-02</td>
-                        <td>Jane Smith</td>
-                        <td>Plastik Kemasan</td>
-                        <td>100</td>
-                        <td>Rp 1.000.000</td>
-                        <td>Belum Lunas</td>
-                        <td>
-                            <a href="#" class="btn btn-sm btn-custom">Detail</a>
-                            <a href="#" class="btn btn-sm btn-custom">Edit</a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>SALE003</td>
-                        <td>2025-05-03</td>
-                        <td>Budi Santoso</td>
-                        <td>Botol 500ml</td>
-                        <td>200</td>
-                        <td>Rp 4.000.000</td>
-                        <td>Lunas</td>
-                        <td>
-                            <a href="#" class="btn btn-sm btn-custom">Detail</a>
-                            <a href="#" class="btn btn-sm btn-custom">Edit</a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>SALE004</td>
-                        <td>2025-05-04</td>
-                        <td>Siti Aminah</td>
-                        <td>Kotak Kayu</td>
-                        <td>30</td>
-                        <td>Rp 1.500.000</td>
-                        <td>Belum Lunas</td>
-                        <td>
-                            <a href="#" class="btn btn-sm btn-custom">Detail</a>
-                            <a href="#" class="btn btn-sm btn-custom">Edit</a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>SALE005</td>
-                        <td>2025-05-05</td>
-                        <td>Rudi Hartono</td>
-                        <td>Palet Plastik</td>
-                        <td>80</td>
-                        <td>Rp 3.200.000</td>
-                        <td>Lunas</td>
-                        <td>
-                            <a href="#" class="btn btn-sm btn-custom">Detail</a>
-                            <a href="#" class="btn btn-sm btn-custom">Edit</a>
-                        </td>
-                    </tr>
+                    <thead>
+                        <tr>
+                            <th>ID Penjualan</th>
+                            <th>Tanggal</th>
+                            <th>Nota Jual</th>
+                            <th>Nama Barang</th>
+                            <th>Jumlah</th>
+                            <th>Grand Total</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (count($sales) > 0): $i = 1?>
+                            <?php foreach ($sales as $sale): ?>
+                                <tr>
+                                    <td><?php echo $i++; ?></td>
+                                    <td><?php echo htmlspecialchars(date('d-m-Y', strtotime($sale['tanggalpenjualan']))); ?></td>
+                                    <td><?php echo htmlspecialchars($sale['notajual']); ?></td>
+                                    <td><?php echo htmlspecialchars($sale['namabarang']); ?></td>
+                                    <td><?php echo htmlspecialchars($sale['jumlah']); ?></td>
+                                    <td>Rp <?php echo number_format($sale['grandtotal'], 0, ',', '.'); ?></td>
+                                    <td>
+                                        <a href="edit_penjualan.php?id=<?php echo $sale['idpenjualan']; ?>" class="btn btn-sm btn-custom">Edit</a>
+                                        <a href="hapus_penjualan.php?id=<?php echo $sale['idpenjualan']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Apakah Anda yakin ingin menghapus data penjualan ini?');">Delete</a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="7" class="text-center text-white">Tidak ada data penjualan.</td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
                 </table>
             </div>
         </div>

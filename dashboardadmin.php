@@ -1,8 +1,40 @@
 <?php
-// Simulasi data untuk dashboard (ganti dengan data dari database sesuai kebutuhan)
-$totalPenjualan = 150000000; // Contoh: Rp 150.000.000
-$totalPesanan = 120; // Contoh: 120 pesanan
-$totalProduk = 450; // Contoh: 450 produk
+require "config.php";
+
+// Cek apakah admin sudah login
+$admin_id = $_SESSION['admin_id'] ?? null;
+if (!isset($admin_id)) {
+    header("Location: login.php");
+    exit();
+}
+
+// Hitung total penjualan (tanpa filter waktu)
+try {
+    $sqlPenjualan = "SELECT SUM(grandtotal) as total_penjualan FROM penjualan";
+    $queryPenjualan = $conn->prepare($sqlPenjualan);
+    $queryPenjualan->execute();
+    $resultPenjualan = $queryPenjualan->fetch(PDO::FETCH_ASSOC);
+    $totalPenjualan = $resultPenjualan['total_penjualan'] ?? 0;
+
+    // Hitung total pesanan (tanpa filter waktu)
+    $sqlPesanan = "SELECT COUNT(idpesanan) as total_pesanan FROM pesanan";
+    $queryPesanan = $conn->prepare($sqlPesanan);
+    $queryPesanan->execute();
+    $resultPesanan = $queryPesanan->fetch(PDO::FETCH_ASSOC);
+    $totalPesanan = $resultPesanan['total_pesanan'] ?? 0;
+
+    // Hitung total produk terdaftar
+    $sqlProduk = "SELECT COUNT(idproduk) as total_produk FROM produk";
+    $queryProduk = $conn->prepare($sqlProduk);
+    $queryProduk->execute();
+    $resultProduk = $queryProduk->fetch(PDO::FETCH_ASSOC);
+    $totalProduk = $resultProduk['total_produk'] ?? 0;
+} catch (PDOException $e) {
+    $totalPenjualan = 0;
+    $totalPesanan = 0;
+    $totalProduk = 0;
+    $error_message = "Terjadi kesalahan: " . $e->getMessage();
+}
 ?>
 
 <!DOCTYPE html>
@@ -139,7 +171,7 @@ $totalProduk = 450; // Contoh: 450 produk
                         <div class="card-icon mb-3">
                             <i class="fas fa-money-bill-wave"></i>
                         </div>
-                        <h5 class="card-title">Total Penjualan Bulan Ini</h5>
+                        <h5 class="card-title">Total Penjualan</h5>
                         <h3 class="card-value">Rp <?php echo number_format($totalPenjualan, 0, ',', '.'); ?></h3>
                         <p class="card-text">Penjualan hingga <?php echo date('F Y'); ?></p>
                     </div>
@@ -150,7 +182,7 @@ $totalProduk = 450; // Contoh: 450 produk
                         <div class="card-icon mb-3">
                             <i class="fas fa-shopping-cart"></i>
                         </div>
-                        <h5 class="card-title">Total Pesanan Bulan Ini</h5>
+                        <h5 class="card-title">Total Pesanan</h5>
                         <h3 class="card-value"><?php echo $totalPesanan; ?></h3>
                         <p class="card-text">Pesanan hingga <?php echo date('F Y'); ?></p>
                     </div>
@@ -167,6 +199,9 @@ $totalProduk = 450; // Contoh: 450 produk
                     </div>
                 </div>
             </div>
+            <?php if (isset($error_message)): ?>
+                <div class="alert alert-danger mt-3"><?php echo htmlspecialchars($error_message); ?></div>
+            <?php endif; ?>
         </div>
     </div>
 
