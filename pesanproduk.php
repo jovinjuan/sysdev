@@ -1,5 +1,6 @@
 <?php
 require "config.php";
+$user_id = $_SESSION['user_id'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -221,7 +222,6 @@ require "config.php";
     <div>
       <a href="dashboardpelanggan.php">Dashboard</a>
       <a href="pesanproduk.php" class="active">Pesan Produk</a>
-      <a href="pantaupengiriman.php">Pantau Pengiriman</a>
       <a href="logout.php">Logout</a>
     </div>
   </div>
@@ -249,12 +249,15 @@ require "config.php";
                     <p><?php echo htmlspecialchars($row['namaproduk']); ?></p>
                     <p>Rp <?php echo htmlspecialchars($row['hargajual']); ?></p>
                     <p>Stok: <?php echo $row['stok']; ?></p>
+                    <form action="prosespesanan.php" method="POST">
                     <div class="quantity-controls">
-                        <button class="decrement-btn">-</button>
-                        <input type="number" class="quantity-input" value="1" min="1" max="<?php echo $row['stok']; ?>">
-                        <button class="increment-btn">+</button>
+                        <input type="hidden" name="idproduct" value="<?php echo htmlspecialchars($row['idproduk']); ?>">
+                        <button class="decrement-btn" type="button">-</button>
+                        <input type="number" name="jumlah" class="quantity-input" value="1" min="1" max="<?php echo $row['stok']; ?>">
+                        <button class="increment-btn" type="button">+</button>
                     </div>
-                    <button class="order-btn">Pesan Sekarang</button>
+                    <button class="order-btn" type="submit" name="pesan">Pesan Sekarang</button>
+                    </form>
                 </div>
                 <?php
             }

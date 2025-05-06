@@ -1,3 +1,26 @@
+<?php
+require "config.php";
+$admin_id = $_SESSION['admin_id'];
+
+if(isset($admin_id)){
+    // Fetch all orders with customer and product details
+    $sql = "
+    SELECT 
+        o.idpesanan, 
+        u.nama AS customer_name, 
+        p.namaproduk, 
+        o.jumlah, 
+        o.status
+    FROM pesanan o
+    JOIN produk p ON o.idproduk = p.idproduk
+    JOIN pengguna u ON o.idpengguna = u.id
+    ";
+    $query = $conn->prepare($sql);
+    $query->execute();
+    $orders = $query->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -159,74 +182,34 @@
     <div class="content">
         <div class="dashboard-container">
             <h2 class="header-title text-center mb-4 fw-bold">Daftar Pesanan</h2>
-            <div class="d-flex justify-content-end mb-3">
-                <a href="#" class="btn btn-custom mb-5">Tambah Pesanan Baru</a>
-            </div>
             <div class="table-responsive">
                 <table class="table table-custom">
                     <tr>
-                        <th>ID Pesanan</th>
+                        <th>Nomor Pesanan</th>
                         <th>Nama Pelanggan</th>
-                        <th>Produk</th>
-                        <th>Jumlah</th>
-                        <th>Status</th>
+                        <th>Nama Produk</th>
+                        <th>Jumlah Pesanan</th>
+                        <th>Status Pesanan</th>
                         <th>Aksi</th>
                     </tr>
-                    <tr>
-                        <td>ORD001</td>
-                        <td>John Doe</td>
-                        <td>Kardus 20x20</td>
-                        <td>50</td>
-                        <td>Diproses</td>
-                        <td>
-                            <a href="#" class="btn btn-sm btn-custom">Detail</a>
-                            <a href="#" class="btn btn-sm btn-custom">Update Status</a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>ORD002</td>
-                        <td>Jane Smith</td>
-                        <td>Plastik Kemasan</td>
-                        <td>100</td>
-                        <td>Dikirim</td>
-                        <td>
-                            <a href="#" class="btn btn-sm btn-custom">Detail</a>
-                            <a href="#" class="btn btn-sm btn-custom">Update Status</a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>ORD003</td>
-                        <td>Budi Santoso</td>
-                        <td>Botol 500ml</td>
-                        <td>200</td>
-                        <td>Selesai</td>
-                        <td>
-                            <a href="#" class="btn btn-sm btn-custom">Detail</a>
-                            <a href="#" class="btn btn-sm btn-custom">Update Status</a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>ORD004</td>
-                        <td>Siti Aminah</td>
-                        <td>Kotak Kayu</td>
-                        <td>30</td>
-                        <td>Pending</td>
-                        <td>
-                            <a href="#" class="btn btn-sm btn-custom">Detail</a>
-                            <a href="#" class="btn btn-sm btn-custom">Update Status</a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>ORD005</td>
-                        <td>Rudi Hartono</td>
-                        <td>Palet Plastik</td>
-                        <td>80</td>
-                        <td>Diproses</td>
-                        <td>
-                            <a href="#" class="btn btn-sm btn-custom">Detail</a>
-                            <a href="#" class="btn btn-sm btn-custom">Update Status</a>
-                        </td>
-                    </tr>
+                <?php if (count($orders) > 0): ?>
+                        <?php foreach ($orders as $order): ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars($order['idpesanan']); ?></td>
+                                <td><?php echo htmlspecialchars($order['customer_name']); ?></td>
+                                <td><?php echo htmlspecialchars($order['namaproduk']); ?></td>
+                                <td><?php echo htmlspecialchars($order['jumlah']); ?></td>
+                                <td><?php echo htmlspecialchars($order['status']); ?></td>
+                                <td>
+                                    <a href="update_order_status.php?idpesanan=<?php echo $order['idpesanan']; ?>&status=Dikirim" class="btn btn-sm btn-custom">Update Status</a>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr>
+                            <td colspan="6" class="text-center">Belum ada pesanan yang masuk.</td>
+                        </tr>
+                    <?php endif; ?>
                 </table>
             </div>
         </div>
