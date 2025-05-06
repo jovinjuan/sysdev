@@ -1,3 +1,10 @@
+<?php
+require "config.php";
+
+$user_id = $_SESSION['user_id'];
+$username = $_SESSION['username'];
+
+?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -190,7 +197,7 @@
     <!-- Content -->
     <div class="content">
         <div class="dashboard-container">
-            <h2 class="header-title mb-5">Selamat Datang, John Doe!</h2>
+            <h2 class="header-title mb-5">Selamat Datang, <?php echo $username ; ?></h2>
             <div class="order-section">
                 <h4>Pesanan Terbaru</h4>
                 <div class="order-card">
@@ -216,7 +223,6 @@
             </div>
         </div>
     </div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 </body>
 </html>
