@@ -249,8 +249,9 @@ $user_id = $_SESSION['user_id'];
                 ?>
                 <div class="product-card" data-name="<?php echo htmlspecialchars(strtolower($row['namaproduk'])); ?>">
                     <p><?php echo htmlspecialchars($row['namaproduk']); ?></p>
-                    <p>Rp <?php echo htmlspecialchars($row['hargajual']); ?></p>
+                    <p>Rp <?php echo htmlspecialchars(number_format($row['hargajual'], 0, ',', '.')); ?></p>
                     <p>Stok: <?php echo $row['stok']; ?></p>
+                    <p>Berat: <?php echo htmlspecialchars($row['berat']); ?> kg</p>
                     <form action="tambahkeranjang.php" method="POST">
                     <div class="quantity-controls">
                         <input type="hidden" name="idproduct" value="<?php echo htmlspecialchars($row['idproduk']); ?>">

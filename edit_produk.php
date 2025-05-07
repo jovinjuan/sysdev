@@ -12,14 +12,15 @@ $harga_jual = '';
 $stok = '';
 $idgudang = '';
 $namagudang = '';
+$waktuperubahan = ''; // New variable for stock change date
 $errors = [];
 $success_message = '';
 
-// Fetch product details including the current idgudang and namagudang
+// Fetch product details including the current idgudang, namagudang, and waktuperubahan
 if (isset($_GET['id']) && is_numeric($_GET['id'])) {
     $id_produk = $_GET['id'];
     try {
-        $stmt = $conn->prepare("SELECT p.namaproduk, p.hargajual, p.stok, p.idgudang, g.namagudang 
+        $stmt = $conn->prepare("SELECT p.namaproduk, p.hargajual, p.stok, p.idgudang, g.namagudang, p.waktuperubahan 
                                 FROM produk p 
                                 JOIN gudang g ON p.idgudang = g.idgudang 
                                 WHERE p.idproduk = :idproduk");
@@ -33,6 +34,7 @@ if (isset($_GET['id']) && is_numeric($_GET['id'])) {
             $stok = $product['stok'];
             $idgudang = $product['idgudang'];
             $namagudang = $product['namagudang'];
+            $waktuperubahan = $product['waktuperubahan']; // Set the waktuperubahan value
         } else {
             $errors[] = "Produk tidak ditemukan.";
         }
@@ -55,6 +57,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $harga_jual_new = trim($_POST['harga_jual']);
     $stok_new = trim($_POST['stok']);
     $namagudang_new = trim($_POST['namagudang']);
+    $waktuperubahan_new = trim($_POST['waktuperubahan']); // New field for stock change date
 
     // Validation
     if (empty($nama_produk_new)) {
@@ -73,6 +76,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (empty($namagudang_new)) {
         $errors[] = "Lokasi penyimpanan tidak boleh kosong.";
     }
+    if (empty($waktuperubahan_new)) {
+        $errors[] = "Waktu perubahan stok tidak boleh kosong.";
+    } elseif (!DateTime::createFromFormat('Y-m-d', $waktuperubahan_new)) {
+        $errors[] = "Format tanggal perubahan stok harus YYYY-MM-DD.";
+    }
 
     if (empty($errors)) {
         try {
@@ -85,13 +93,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $stmt->bindParam(':idgudang', $idgudang);
             $stmt->execute();
 
-            // Update the produk table
+            // Update the produk table including waktuperubahan
             $stmt = $conn->prepare("UPDATE produk 
-                                    SET namaproduk = :namaproduk, hargajual = :hargajual, stok = :stok 
+                                    SET namaproduk = :namaproduk, hargajual = :hargajual, stok = :stok, waktuperubahan = :waktuperubahan 
                                     WHERE idproduk = :idproduk");
             $stmt->bindParam(':namaproduk', $nama_produk_new);
             $stmt->bindParam(':hargajual', $harga_jual_new);
             $stmt->bindParam(':stok', $stok_new);
+            $stmt->bindParam(':waktuperubahan', $waktuperubahan_new); // Bind the new date field
             $stmt->bindParam(':idproduk', $id_produk);
             $stmt->execute();
 
@@ -104,6 +113,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $harga_jual = $harga_jual_new;
             $stok = $stok_new;
             $namagudang = $namagudang_new;
+            $waktuperubahan = $waktuperubahan_new; // Update the waktuperubahan value
         } catch (PDOException $e) {
             // Rollback the transaction on error
             $conn->rollBack();
@@ -262,6 +272,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <div class="mb-3">
                     <label for="namagudang" class="form-label">Lokasi Penyimpanan</label>
                     <input type="text" class="form-control" id="namagudang" name="namagudang" value="<?php echo htmlspecialchars($namagudang); ?>" required>
+                </div>
+                <div class="mb-3">
+                    <label for="waktuperubahan" class="form-label">Waktu Perubahan Stok</label>
+                    <input type="date" class="form-control" id="waktuperubahan" name="waktuperubahan" value="<?php echo htmlspecialchars($waktuperubahan); ?>" required>
                 </div>
                 <div class="d-grid gap-2">
                     <button type="submit" class="btn btn-custom">Simpan Perubahan</button>

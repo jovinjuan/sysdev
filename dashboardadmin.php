@@ -29,10 +29,20 @@ try {
     $queryProduk->execute();
     $resultProduk = $queryProduk->fetch(PDO::FETCH_ASSOC);
     $totalProduk = $resultProduk['total_produk'] ?? 0;
+
+    // Fetch products with zero stock
+    $sqlZeroStock = "SELECT p.namaproduk, g.namagudang 
+                     FROM produk p 
+                     JOIN gudang g ON p.idgudang = g.idgudang 
+                     WHERE p.stok = 0";
+    $queryZeroStock = $conn->prepare($sqlZeroStock);
+    $queryZeroStock->execute();
+    $zero_stock_products = $queryZeroStock->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     $totalPenjualan = 0;
     $totalPesanan = 0;
     $totalProduk = 0;
+    $zero_stock_products = [];
     $error_message = "Terjadi kesalahan: " . $e->getMessage();
 }
 ?>
@@ -201,6 +211,18 @@ try {
             </div>
             <?php if (isset($error_message)): ?>
                 <div class="alert alert-danger mt-3"><?php echo htmlspecialchars($error_message); ?></div>
+            <?php endif; ?>
+            <!-- Display warning if there are products with zero stock -->
+            <?php if (!empty($zero_stock_products)): ?>
+                <div class="alert alert-warning mt-3 alert-dismissible fade show" role="alert">
+                    <strong>Peringatan!</strong> Ada produk dengan stok kosong:
+                    <ul>
+                        <?php foreach ($zero_stock_products as $product): ?>
+                            <li><?php echo htmlspecialchars($product['namaproduk']); ?> (Lokasi: <?php echo htmlspecialchars($product['namagudang']); ?>)</li>
+                        <?php endforeach; ?>
+                    </ul>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
             <?php endif; ?>
         </div>
     </div>

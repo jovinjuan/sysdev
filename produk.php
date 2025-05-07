@@ -9,7 +9,7 @@ if (!cekLogin()) {
 // Fetch products from database
 $products = [];
 try {
-    $stmt = $conn->query("SELECT p.idproduk, p.namaproduk, p.hargajual, p.stok, g.namagudang 
+    $stmt = $conn->query("SELECT p.idproduk, p.namaproduk, p.hargajual, p.stok, p.berat, g.namagudang, p.waktuperubahan 
     FROM produk p 
     JOIN gudang g ON p.idgudang = g.idgudang 
     ORDER BY p.idproduk ASC");
@@ -209,7 +209,9 @@ try {
                             <th>Nama Produk</th>
                             <th>Harga Jual</th>
                             <th>Stok</th>
+                            <th>Berat (kg)</th>
                             <th>Lokasi Penyimpanan</th>
+                            <th>Waktu Perubahan</th>
                             <th>Aksi</th>
                         </tr>
                     </thead>
@@ -217,11 +219,13 @@ try {
                         <?php if (count($products) > 0): $i = 1 ?>
                             <?php foreach ($products as $product): ?>
                                 <tr>
-                                    <td><?php echo $i++ ;?></td>
+                                    <td><?php echo $i++; ?></td>
                                     <td><?php echo htmlspecialchars($product['namaproduk']); ?></td>
                                     <td>Rp <?php echo number_format($product['hargajual'], 0, ',', '.'); ?></td>
                                     <td><?php echo htmlspecialchars($product['stok']); ?></td>
+                                    <td><?php echo htmlspecialchars($product['berat']); ?></td>
                                     <td><?php echo htmlspecialchars($product['namagudang']); ?></td>
+                                    <td><?php echo htmlspecialchars($product['waktuperubahan']); ?></td>
                                     <td>
                                         <a href="edit_produk.php?id=<?php echo $product['idproduk']; ?>" class="btn btn-sm btn-custom">Edit</a>
                                         <a href="hapus_produk.php?id=<?php echo $product['idproduk']; ?>" class="btn btn-sm btn-custom" onclick="return confirm('Apakah Anda yakin ingin menghapus produk ini?');">Delete</a>
@@ -230,7 +234,7 @@ try {
                             <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="5" class="text-center text-white">Tidak ada data produk.</td>
+                                <td colspan="8" class="text-center text-white">Tidak ada data produk.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>

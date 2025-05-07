@@ -10,6 +10,8 @@ $nama_produk = '';
 $harga_jual = '';
 $stok = '';
 $namagudang = '';
+$waktuperubahan = '';
+$berat = ''; // New variable for weight
 $errors = [];
 $success_message = '';
 
@@ -18,6 +20,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $harga_jual = trim($_POST['harga_jual']);
     $stok = trim($_POST['stok']);
     $namagudang = trim($_POST['namagudang']);
+    $waktuperubahan = trim($_POST['waktuperubahan']);
+    $berat = trim($_POST['berat']); // Get the new weight input
 
     if (empty($nama_produk)) {
         $errors[] = "Nama produk tidak boleh kosong.";
@@ -35,6 +39,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (empty($namagudang)) {
         $errors[] = "Lokasi penyimpanan tidak boleh kosong.";
     }
+    if (empty($waktuperubahan)) {
+        $errors[] = "Waktu perubahan stok tidak boleh kosong.";
+    } elseif (!DateTime::createFromFormat('Y-m-d', $waktuperubahan)) {
+        $errors[] = "Format tanggal perubahan stok harus YYYY-MM-DD.";
+    }
+    if (empty($berat)) {
+        $errors[] = "Berat tidak boleh kosong.";
+    } elseif (!is_numeric($berat) || $berat < 0) {
+        $errors[] = "Berat harus berupa angka positif.";
+    }
 
     if (empty($errors)) {
         try {
@@ -49,12 +63,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             // Retrieve the newly created idgudang
             $idgudang = $conn->lastInsertId();
 
-            // Insert into produk table with the new idgudang
-            $stmt_produk = $conn->prepare("INSERT INTO produk (namaproduk, hargajual, stok, idgudang) VALUES (:namaproduk, :hargajual, :stok, :idgudang)");
+            // Insert into produk table with the new idgudang, waktuperubahan, and berat
+            $stmt_produk = $conn->prepare("INSERT INTO produk (namaproduk, hargajual, stok, idgudang, waktuperubahan, berat) VALUES (:namaproduk, :hargajual, :stok, :idgudang, :waktuperubahan, :berat)");
             $stmt_produk->bindParam(':namaproduk', $nama_produk);
             $stmt_produk->bindParam(':hargajual', $harga_jual);
             $stmt_produk->bindParam(':stok', $stok);
             $stmt_produk->bindParam(':idgudang', $idgudang);
+            $stmt_produk->bindParam(':waktuperubahan', $waktuperubahan);
+            $stmt_produk->bindParam(':berat', $berat); // Bind the new weight field
             $stmt_produk->execute();
 
             // Commit the transaction
@@ -65,6 +81,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $harga_jual = '';
             $stok = '';
             $namagudang = '';
+            $waktuperubahan = '';
+            $berat = ''; // Reset the new field
         } catch (PDOException $e) {
             // Rollback the transaction on error
             $conn->rollBack();
@@ -219,8 +237,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <input type="number" class="form-control" id="stok" name="stok" value="<?php echo htmlspecialchars($stok); ?>" required>
                 </div>
                 <div class="mb-3">
+                    <label for="berat" class="form-label">Berat (kg)</label>
+                    <input type="number" class="form-control" id="berat" name="berat" value="<?php echo htmlspecialchars($berat); ?>" required>
+                </div>
+                <div class="mb-3">
                     <label for="namagudang" class="form-label">Lokasi Penyimpanan</label>
                     <input type="text" class="form-control" id="namagudang" name="namagudang" value="<?php echo htmlspecialchars($namagudang); ?>" required>
+                </div>
+                <div class="mb-3">
+                    <label for="waktuperubahan" class="form-label">Waktu Perubahan Stok</label>
+                    <input type="date" class="form-control" id="waktuperubahan" name="waktuperubahan" value="<?php echo htmlspecialchars($waktuperubahan); ?>" required>
                 </div>
                 <div class="d-grid gap-2">
                     <button type="submit" class="btn btn-custom">Tambah Produk</button>

@@ -32,9 +32,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_alamat'])) {
     }
 }
 
-// Fetch cart items with product details
+// Fetch cart items with product details and weight
 $stmt = $conn->prepare("
-    SELECT k.idkeranjang, k.idproduk, k.jumlah, k.totalharga, k.biayapengiriman, k.grandtotal, p.namaproduk, p.hargajual
+    SELECT k.idkeranjang, k.idproduk, k.jumlah, k.totalharga, k.biayapengiriman, k.grandtotal, p.berat, p.namaproduk, p.hargajual
     FROM keranjang k
     JOIN produk p ON k.idproduk = p.idproduk
     WHERE k.idpengguna = :user_id
@@ -49,14 +49,33 @@ $user_stmt->bindParam(':user_id', $user_id);
 $user_stmt->execute();
 $user = $user_stmt->fetch(PDO::FETCH_ASSOC);
 
-// Calculate total items and grand total
+// Calculate total items, shipping cost based on weight, and grand total
 $total_items = count($cart_items);
-$total_biayapengiriman = 0;
 $subtotal = 0;
+$total_berat = 0;
 
 foreach ($cart_items as $item) {
     $subtotal += $item['totalharga'];
-    $total_biayapengiriman += $item['biayapengiriman'];
+    $total_berat += $item['berat'] * $item['jumlah']; // Total weight = weight per item * quantity
+}
+
+$biaya_per_kg = 2000;
+$total_biayapengiriman = $total_berat * $biaya_per_kg;
+
+// Update shipping cost in the database for each item
+foreach ($cart_items as $item) {
+    $item_biayapengiriman = ($item['berat'] * $item['jumlah']) * $biaya_per_kg;
+    $item_grandtotal = $item['totalharga'] + $item_biayapengiriman;
+    
+    $update_stmt = $conn->prepare("
+        UPDATE keranjang 
+        SET biayapengiriman = :biayapengiriman, grandtotal = :grandtotal 
+        WHERE idkeranjang = :idkeranjang
+    ");
+    $update_stmt->bindParam(':biayapengiriman', $item_biayapengiriman);
+    $update_stmt->bindParam(':grandtotal', $item_grandtotal);
+    $update_stmt->bindParam(':idkeranjang', $item['idkeranjang']);
+    $update_stmt->execute();
 }
 
 $grand_total = $subtotal + $total_biayapengiriman;
@@ -204,6 +223,7 @@ $telepon = $user['telepon'] ?? '081234567890';
             <div class="flex-grow-1">
               <h5><?php echo htmlspecialchars($item['namaproduk']); ?></h5>
               <p>Quantity: <?php echo htmlspecialchars($item['jumlah']); ?></p>
+              <p>Berat: <?php echo htmlspecialchars($item['berat'] * $item['jumlah']); ?> kg (<?php echo htmlspecialchars($item['berat']); ?> kg/unit)</p>
             </div>
             <h5>Rp <?php echo number_format($item['totalharga'], 0, ',', '.'); ?></h5>
             <input type="hidden" name="items[<?php echo $index; ?>][idproduk]" value="<?php echo htmlspecialchars($item['idproduk']); ?>">
@@ -220,8 +240,9 @@ $telepon = $user['telepon'] ?? '081234567890';
           <?php if (isset($error)): ?>
             <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
           <?php endif; ?>
+          <p><strong>Total Berat:</strong> <?php echo htmlspecialchars($total_berat); ?> kg</p>
           <p><strong>Telepon:</strong> <?php echo htmlspecialchars($telepon); ?></p>
-          <p><strong>Biaya Pengiriman:</strong> Rp <?php echo number_format($total_biayapengiriman, 0, ',', '.'); ?></p>
+          <p><strong>Biaya Pengiriman :</strong> Rp <?php echo number_format($total_biayapengiriman, 0, ',', '.'); ?></p>
         </div>
 
         <div class="cart-footer">

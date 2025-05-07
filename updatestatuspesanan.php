@@ -29,19 +29,27 @@ try {
     // Mulai transaksi
     $conn->beginTransaction();
 
-    // Ambil status saat ini dari pesanan
-    $stmt = $conn->prepare("SELECT status FROM pesanan WHERE idpesanan = :idpesanan FOR UPDATE");
+    // Ambil status saat ini dan idpengguna dari pesanan
+    $stmt = $conn->prepare("SELECT status, idpengguna FROM pesanan WHERE idpesanan = :idpesanan FOR UPDATE");
     $stmt->bindParam(':idpesanan', $idpesanan, PDO::PARAM_INT);
     $stmt->execute();
     $order = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($order) {
         $current_status = $order['status'];
+        $user_id = $order['idpengguna'];
 
         // Pastikan status saat ini adalah "Diproses"
         if ($current_status !== "Diproses") {
             throw new Exception("Status hanya dapat diubah dari 'Diproses' ke 'Dikirim'. Status saat ini: " . htmlspecialchars($current_status));
         }
+
+        // Ambil nama produk untuk notifikasi
+        $stmt = $conn->prepare("SELECT namaproduk FROM pesanan p JOIN produk pr ON p.idproduk = pr.idproduk WHERE p.idpesanan = :idpesanan");
+        $stmt->bindParam(':idpesanan', $idpesanan, PDO::PARAM_INT);
+        $stmt->execute();
+        $product = $stmt->fetch(PDO::FETCH_ASSOC);
+        $namaproduk = $product['namaproduk'];
 
         // Perbarui status menjadi "Dikirim"
         $stmt = $conn->prepare("UPDATE pesanan SET status = :status WHERE idpesanan = :idpesanan");
@@ -49,9 +57,19 @@ try {
         $stmt->bindParam(':idpesanan', $idpesanan, PDO::PARAM_INT);
         $stmt->execute();
 
+        // Simpan notifikasi ke tabel notifikasi
+        $pesan = "Pesanan Anda (ORD" . str_pad($idpesanan, 3, '0', STR_PAD_LEFT) . " - " . htmlspecialchars($namaproduk) . ") sedang dalam pengiriman! Status: Dikirim";
+        $status_dibaca = 0; // Belum Dibaca
+        $waktu = date('Y-m-d H:i:s'); // Waktu saat ini
+        $stmt = $conn->prepare("INSERT INTO notifikasi (idpengguna, pesan, statusdibaca) VALUES (:idpengguna, :pesan, :statusdibaca)");
+        $stmt->bindParam(':idpengguna', $user_id, PDO::PARAM_INT);
+        $stmt->bindParam(':pesan', $pesan, PDO::PARAM_STR);
+        $stmt->bindParam(':statusdibaca', $status_dibaca, PDO::PARAM_INT);
+        $stmt->execute();
+
         // Commit transaksi
         $conn->commit();
-        $message = "Status pesanan berhasil diubah menjadi 'Dikirim'.";
+        $message = "Status pesanan berhasil diubah menjadi 'Dikirim' dan notifikasi telah dikirim ke pelanggan.";
     } else {
         throw new Exception("Pesanan dengan ID tersebut tidak ditemukan.");
     }

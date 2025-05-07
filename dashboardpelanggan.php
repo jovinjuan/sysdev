@@ -21,16 +21,55 @@ try {
     $query->execute();
     $orders = $query->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    // Handle error (e.g., log it or display a generic message)
     $orders = [];
 }
 
-// Proses konfirmasi penerimaan
+// Fetch notifications for the user
+try {
+    $sql = "SELECT idnotifikasi, pesan, statusdibaca 
+            FROM notifikasi 
+            WHERE idpengguna = :user_id 
+            ORDER BY idnotifikasi DESC";
+    $query = $conn->prepare($sql);
+    $query->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+    $query->execute();
+    $notifications = $query->fetchAll(PDO::FETCH_ASSOC);
+
+    // Count unread notifications
+    $sql = "SELECT COUNT(*) 
+            FROM notifikasi 
+            WHERE idpengguna = :user_id AND statusdibaca = 'Belum Dibaca'";
+    $query = $conn->prepare($sql);
+    $query->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+    $query->execute();
+    $unread_count = $query->fetchColumn();
+} catch (PDOException $e) {
+    $notifications = [];
+    $unread_count = 0;
+}
+
+// Mark notification as read when viewed (optional, can be triggered via a separate action)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'mark_read' && isset($_POST['notif_id'])) {
+    $notif_id = $_POST['notif_id'];
+    try {
+        $sql = "UPDATE notifikasi SET statusdibaca = 'Dibaca' WHERE idnotifikasi = :notif_id AND idpengguna = :user_id";
+        $query = $conn->prepare($sql);
+        $query->bindParam(':notif_id', $notif_id, PDO::PARAM_INT);
+        $query->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+        $query->execute();
+        echo "<script>window.location.href='dashboardpelanggan.php';</script>";
+        exit();
+    } catch (PDOException $e) {
+        echo "<script>alert('Gagal menandai notifikasi sebagai dibaca.'); window.location.href='dashboardpelanggan.php';</script>";
+        exit();
+    }
+}
+
+// Proses konfirmasi penerimaan (unchanged from your original code)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'confirm' && isset($_POST['order_id'])) {
     $order_id = $_POST['order_id'];
 
     try {
-        // Pastikan pesanan milik pengguna dan status saat ini adalah "Dikirim"
         $sql = "SELECT status FROM pesanan WHERE idpesanan = :order_id AND idpengguna = :user_id";
         $query = $conn->prepare($sql);
         $query->bindParam(':order_id', $order_id, PDO::PARAM_INT);
@@ -39,14 +78,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $order = $query->fetch(PDO::FETCH_ASSOC);
 
         if ($order && $order['status'] === 'Dikirim') {
-            // Update status menjadi "Selesai"
             $sql = "UPDATE pesanan SET status = 'Selesai' WHERE idpesanan = :order_id AND idpengguna = :user_id";
             $query = $conn->prepare($sql);
             $query->bindParam(':order_id', $order_id, PDO::PARAM_INT);
             $query->bindParam(':user_id', $user_id, PDO::PARAM_INT);
             $query->execute();
 
-            // Tampilkan pesan sukses dan refresh halaman
             echo "<script>alert('Terima kasih! Status pesanan telah diperbarui.'); window.location.href='dashboardpelanggan.php';</script>";
             exit();
         } else {
@@ -55,7 +92,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         }
     } catch (PDOException $e) {
         echo "<script>alert('Terjadi kesalahan. Silakan coba lagi.'); window.location.href='dashboardpelanggan.php';</script>";
-        // Log error jika perlu
         exit();
     }
 }
@@ -118,51 +154,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             text-align: center;
             color: #f59e0b;
             text-shadow: 0 0 5px rgba(245, 158, 11, 0.3);
-        }
-        .product-section {
-            display: flex;
-            gap: 1.5rem;
-            flex-wrap: wrap;
-            justify-content: center;
-            margin-bottom: 2rem;
-        }
-        .product-card {
-            background-color: #4a5568;
-            border-radius: 10px;
-            padding: 1rem;
-            width: 200px;
-            text-align: center;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            border: 1px solid #66708a;
-        }
-        .product-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 5px 15px rgba(245, 158, 11, 0.2);
-        }
-        .product-card h5 {
-            margin: 0.5rem 0;
-            font-size: 1.1rem;
-            color: #ffffff;
-        }
-        .product-card p {
-            margin: 0.25rem 0;
-            font-size: 0.9rem;
-            color: #d1d5db;
-        }
-        .btn-custom {
-            background-color: #f59e0b;
-            color: #ffffff;
-            border: none;
-            border-radius: 5px;
-            padding: 0.5rem 1rem;
-            transition: background-color 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 0.9rem;
-        }
-        .btn-custom:hover {
-            background-color: #d97706;
-            color: #ffffff;
         }
         .order-section {
             background-color: #4a5568;
@@ -243,12 +234,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             opacity: 0.3;
             z-index: 0;
         }
+        /* Notification styles */
+        .notification-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        .notification-bell {
+            color: #ffffff;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+        .notification-bell:hover {
+            color: #f59e0b;
+        }
+        .notification-count {
+            position: absolute;
+            top: -5px;
+            right: -10px;
+            background-color: #e07a5f;
+            color: #ffffff;
+            border-radius: 50%;
+            padding: 2px 6px;
+            font-size: 0.7rem;
+        }
+        .dropdown-menu {
+            background-color: #4a5568;
+            border: 1px solid #66708a;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .dropdown-item {
+            color: #ffffff;
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+        .dropdown-item.unread {
+            background-color: #5a6276;
+            font-weight: 600;
+        }
+        .dropdown-item.read {
+            background-color: #4a5568;
+        }
+        .dropdown-item:hover {
+            background-color: #6b7280;
+        }
         @media (max-width: 768px) {
             .content {
                 padding: 5rem 1rem 1rem;
-            }
-            .product-card {
-                width: 150px;
             }
             .order-card {
                 flex-direction: column;
@@ -272,6 +304,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             <a href="dashboardpelanggan.php" class="active">Dashboard</a>
             <a href="pesanproduk.php">Pesan Produk</a>
             <a href="keranjang.php"><i class="fa-solid fa-cart-shopping" style="color: #ffffff;"></i></a>
+            <div class="notification-dropdown ms-3">
+                <i class="fa-solid fa-bell notification-bell" data-bs-toggle="dropdown"></i>
+                <?php if ($unread_count > 0): ?>
+                    <span class="notification-count"><?php echo $unread_count; ?></span>
+                <?php endif; ?>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <?php if ($notifications): ?>
+                        <?php foreach ($notifications as $notif): ?>
+                            <li>
+                                <form method="POST" action="" class="d-inline">
+                                    <input type="hidden" name="action" value="mark_read">
+                                    <input type="hidden" name="notif_id" value="<?php echo htmlspecialchars($notif['idnotifikasi']); ?>">
+                                    <button type="submit" class="dropdown-item <?php echo $notif['statusdibaca'] === 'Belum Dibaca' ? 'unread' : 'read'; ?>">
+                                        <?php echo htmlspecialchars($notif['pesan']); ?>
+                                    </button>
+                                </form>
+                            </li>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <li><a class="dropdown-item">Tidak ada notifikasi.</a></li>
+                    <?php endif; ?>
+                </ul>
+            </div>
             <a href="logout.php">Logout</a>
         </div>
     </div>
@@ -280,6 +335,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     <div class="content">
         <div class="dashboard-container">
             <h2 class="header-title mb-5">Selamat Datang, <?php echo htmlspecialchars($username); ?></h2>
+
             <?php if ($orders): ?>
                 <?php foreach ($orders as $order): ?>
                     <div class="order-section my-5">
