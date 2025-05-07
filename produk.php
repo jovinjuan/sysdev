@@ -9,7 +9,10 @@ if (!cekLogin()) {
 // Fetch products from database
 $products = [];
 try {
-    $stmt = $conn->query("SELECT idproduk, namaproduk, hargajual, stok FROM produk ORDER BY idproduk ASC");
+    $stmt = $conn->query("SELECT p.idproduk, p.namaproduk, p.hargajual, p.stok, g.namagudang 
+    FROM produk p 
+    JOIN gudang g ON p.idgudang = g.idgudang 
+    ORDER BY p.idproduk ASC");
     $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     // Handle error, e.g., log it or display a user-friendly message
@@ -154,7 +157,7 @@ try {
 <body>
     <!-- Sidebar -->
     <div class="sidebar d-flex flex-column">
-        <h4 class="text-white text-center mb-4">Sistem Gudang</h4>
+        <h4 class="text-white text-center mb-4">Sistem Logistik</h4>
         <ul class="nav flex-column">
             <li class="nav-item">
                 <a class="nav-link" href="dashboardadmin.php"><i class="fas fa-home"></i><span>Home</span></a>
@@ -206,6 +209,7 @@ try {
                             <th>Nama Produk</th>
                             <th>Harga Jual</th>
                             <th>Stok</th>
+                            <th>Lokasi Penyimpanan</th>
                             <th>Aksi</th>
                         </tr>
                     </thead>
@@ -217,6 +221,7 @@ try {
                                     <td><?php echo htmlspecialchars($product['namaproduk']); ?></td>
                                     <td>Rp <?php echo number_format($product['hargajual'], 0, ',', '.'); ?></td>
                                     <td><?php echo htmlspecialchars($product['stok']); ?></td>
+                                    <td><?php echo htmlspecialchars($product['namagudang']); ?></td>
                                     <td>
                                         <a href="edit_produk.php?id=<?php echo $product['idproduk']; ?>" class="btn btn-sm btn-custom">Edit</a>
                                         <a href="hapus_produk.php?id=<?php echo $product['idproduk']; ?>" class="btn btn-sm btn-custom" onclick="return confirm('Apakah Anda yakin ingin menghapus produk ini?');">Delete</a>

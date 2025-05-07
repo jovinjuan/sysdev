@@ -158,7 +158,7 @@ if(isset($admin_id)){
 <body>
     <!-- Sidebar -->
     <div class="sidebar d-flex flex-column">
-        <h4 class="text-white text-center mb-4">Sistem Gudang</h4>
+        <h4 class="text-white text-center mb-4">Sistem Logistik</h4>
         <ul class="nav flex-column">
             <li class="nav-item">
                 <a class="nav-link" href="dashboardadmin.php"><i class="fas fa-home"></i><span>Home</span></a>

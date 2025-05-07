@@ -9,6 +9,7 @@ if (!cekLogin()) {
 $nama_produk = '';
 $harga_jual = '';
 $stok = '';
+$namagudang = '';
 $errors = [];
 $success_message = '';
 
@@ -16,6 +17,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $nama_produk = trim($_POST['nama_produk']);
     $harga_jual = trim($_POST['harga_jual']);
     $stok = trim($_POST['stok']);
+    $namagudang = trim($_POST['namagudang']);
 
     if (empty($nama_produk)) {
         $errors[] = "Nama produk tidak boleh kosong.";
@@ -30,20 +32,42 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     } elseif (!is_numeric($stok) || $stok < 0) {
         $errors[] = "Stok harus berupa angka positif.";
     }
+    if (empty($namagudang)) {
+        $errors[] = "Lokasi penyimpanan tidak boleh kosong.";
+    }
 
     if (empty($errors)) {
         try {
-            $stmt = $conn->prepare("INSERT INTO produk (namaproduk, hargajual, stok) VALUES (:namaproduk, :hargajual, :stok)");
-            $stmt->bindParam(':namaproduk', $nama_produk);
-            $stmt->bindParam(':hargajual', $harga_jual);
-            $stmt->bindParam(':stok', $stok);
-            $stmt->execute();
+            // Start a transaction to ensure data consistency
+            $conn->beginTransaction();
+
+            // Insert the new storage location into gudang table
+            $stmt_gudang = $conn->prepare("INSERT INTO gudang (namagudang) VALUES (:namagudang)");
+            $stmt_gudang->bindParam(':namagudang', $namagudang);
+            $stmt_gudang->execute();
+
+            // Retrieve the newly created idgudang
+            $idgudang = $conn->lastInsertId();
+
+            // Insert into produk table with the new idgudang
+            $stmt_produk = $conn->prepare("INSERT INTO produk (namaproduk, hargajual, stok, idgudang) VALUES (:namaproduk, :hargajual, :stok, :idgudang)");
+            $stmt_produk->bindParam(':namaproduk', $nama_produk);
+            $stmt_produk->bindParam(':hargajual', $harga_jual);
+            $stmt_produk->bindParam(':stok', $stok);
+            $stmt_produk->bindParam(':idgudang', $idgudang);
+            $stmt_produk->execute();
+
+            // Commit the transaction
+            $conn->commit();
+
             $success_message = "Produk berhasil ditambahkan!";
-            // Clear form fields after successful submission
             $nama_produk = '';
             $harga_jual = '';
             $stok = '';
+            $namagudang = '';
         } catch (PDOException $e) {
+            // Rollback the transaction on error
+            $conn->rollBack();
             $errors[] = "Gagal menambahkan produk: " . $e->getMessage();
         }
     }
@@ -193,6 +217,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <div class="mb-3">
                     <label for="stok" class="form-label">Stok</label>
                     <input type="number" class="form-control" id="stok" name="stok" value="<?php echo htmlspecialchars($stok); ?>" required>
+                </div>
+                <div class="mb-3">
+                    <label for="namagudang" class="form-label">Lokasi Penyimpanan</label>
+                    <input type="text" class="form-control" id="namagudang" name="namagudang" value="<?php echo htmlspecialchars($namagudang); ?>" required>
                 </div>
                 <div class="d-grid gap-2">
                     <button type="submit" class="btn btn-custom">Tambah Produk</button>

@@ -10,15 +10,19 @@ $id_produk = '';
 $nama_produk = '';
 $harga_jual = '';
 $stok = '';
+$idgudang = '';
+$namagudang = '';
 $errors = [];
 $success_message = '';
 
+// Fetch product details including the current idgudang and namagudang
 if (isset($_GET['id']) && is_numeric($_GET['id'])) {
     $id_produk = $_GET['id'];
-
-    // Fetch product details
     try {
-        $stmt = $conn->prepare("SELECT namaproduk, hargajual, stok FROM produk WHERE idproduk = :idproduk");
+        $stmt = $conn->prepare("SELECT p.namaproduk, p.hargajual, p.stok, p.idgudang, g.namagudang 
+                                FROM produk p 
+                                JOIN gudang g ON p.idgudang = g.idgudang 
+                                WHERE p.idproduk = :idproduk");
         $stmt->bindParam(':idproduk', $id_produk);
         $stmt->execute();
         $product = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -27,6 +31,8 @@ if (isset($_GET['id']) && is_numeric($_GET['id'])) {
             $nama_produk = $product['namaproduk'];
             $harga_jual = $product['hargajual'];
             $stok = $product['stok'];
+            $idgudang = $product['idgudang'];
+            $namagudang = $product['namagudang'];
         } else {
             $errors[] = "Produk tidak ditemukan.";
         }
@@ -37,9 +43,10 @@ if (isset($_GET['id']) && is_numeric($_GET['id'])) {
     $errors[] = "ID Produk tidak valid.";
 }
 
+// Handle form submission
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (isset($_POST['id_produk']) && is_numeric($_POST['id_produk'])) {
-        $id_produk = $_POST['id_produk']; // Ensure id_produk is set from POST for update
+        $id_produk = $_POST['id_produk'];
     } else {
         $errors[] = "ID Produk tidak valid untuk pembaruan.";
     }
@@ -47,7 +54,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $nama_produk_new = trim($_POST['nama_produk']);
     $harga_jual_new = trim($_POST['harga_jual']);
     $stok_new = trim($_POST['stok']);
+    $namagudang_new = trim($_POST['namagudang']);
 
+    // Validation
     if (empty($nama_produk_new)) {
         $errors[] = "Nama produk tidak boleh kosong.";
     }
@@ -61,21 +70,43 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     } elseif (!is_numeric($stok_new) || $stok_new < 0) {
         $errors[] = "Stok harus berupa angka positif.";
     }
+    if (empty($namagudang_new)) {
+        $errors[] = "Lokasi penyimpanan tidak boleh kosong.";
+    }
 
     if (empty($errors)) {
         try {
-            $stmt = $conn->prepare("UPDATE produk SET namaproduk = :namaproduk, hargajual = :hargajual, stok = :stok WHERE idproduk = :idproduk");
+            // Start a transaction to ensure data consistency
+            $conn->beginTransaction();
+
+            // Update the gudang table with the new namagudang
+            $stmt = $conn->prepare("UPDATE gudang SET namagudang = :namagudang WHERE idgudang = :idgudang");
+            $stmt->bindParam(':namagudang', $namagudang_new);
+            $stmt->bindParam(':idgudang', $idgudang);
+            $stmt->execute();
+
+            // Update the produk table
+            $stmt = $conn->prepare("UPDATE produk 
+                                    SET namaproduk = :namaproduk, hargajual = :hargajual, stok = :stok 
+                                    WHERE idproduk = :idproduk");
             $stmt->bindParam(':namaproduk', $nama_produk_new);
             $stmt->bindParam(':hargajual', $harga_jual_new);
             $stmt->bindParam(':stok', $stok_new);
             $stmt->bindParam(':idproduk', $id_produk);
             $stmt->execute();
+
+            // Commit the transaction
+            $conn->commit();
+
             $success_message = "Produk berhasil diperbarui!";
             // Update current values to reflect changes
             $nama_produk = $nama_produk_new;
             $harga_jual = $harga_jual_new;
             $stok = $stok_new;
+            $namagudang = $namagudang_new;
         } catch (PDOException $e) {
+            // Rollback the transaction on error
+            $conn->rollBack();
             $errors[] = "Gagal memperbarui produk: " . $e->getMessage();
         }
     }
@@ -213,7 +244,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 </div>
             <?php endif; ?>
 
-            <?php if (empty($errors) || $success_message): // Show form if no critical errors or after success ?>
+            <?php if (empty($errors) || $success_message): ?>
             <form method="POST" action="edit_produk.php?id=<?php echo htmlspecialchars($id_produk); ?>">
                 <input type="hidden" name="id_produk" value="<?php echo htmlspecialchars($id_produk); ?>">
                 <div class="mb-3">
@@ -227,6 +258,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <div class="mb-3">
                     <label for="stok" class="form-label">Stok</label>
                     <input type="number" class="form-control" id="stok" name="stok" value="<?php echo htmlspecialchars($stok); ?>" required>
+                </div>
+                <div class="mb-3">
+                    <label for="namagudang" class="form-label">Lokasi Penyimpanan</label>
+                    <input type="text" class="form-control" id="namagudang" name="namagudang" value="<?php echo htmlspecialchars($namagudang); ?>" required>
                 </div>
                 <div class="d-grid gap-2">
                     <button type="submit" class="btn btn-custom">Simpan Perubahan</button>
