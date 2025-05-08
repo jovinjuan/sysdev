@@ -1,27 +1,58 @@
 <?php
-session_start();
 require "config.php";
 
 $user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;
 $username = isset($_SESSION['username']) ? $_SESSION['username'] : 'User';
 
 if (!$user_id) {
-    header("Location: login.php");
+    header("Location: index.php");
     exit();
 }
 
-// Fetch all orders for the user, excluding those with status "Selesai"
-try {
-    $sql = "SELECT p.idpesanan, p.jumlah, p.status, p.totalharga, pr.namaproduk 
-            FROM pesanan p 
-            JOIN produk pr ON p.idproduk = pr.idproduk 
-            WHERE p.idpengguna = :user_id AND p.status != 'Selesai'";
-    $query = $conn->prepare($sql);
-    $query->bindParam(':user_id', $user_id, PDO::PARAM_INT);
-    $query->execute();
-    $orders = $query->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    $orders = [];
+// Ambil input pencarian nomor resi dari GET
+$search_resi = isset($_GET['resi']) ? trim($_GET['resi']) : '';
+$search_idpesanan = null;
+$search_message = '';
+
+if ($search_resi !== '') {
+    // Ekstrak angka dari nomor resi (misalnya, "ORD001" -> "001" -> 1)
+    if (preg_match('/^ORD(\d+)$/', strtoupper($search_resi), $matches)) {
+        $search_idpesanan = (int)$matches[1];
+    } elseif (is_numeric($search_resi)) {
+        $search_idpesanan = (int)$search_resi;
+    } else {
+        $search_message = "Format nomor resi tidak valid. Gunakan format ORDxxx atau angka.";
+    }
+}
+
+// Fetch orders only if a valid search is performed
+$orders = [];
+if ($search_idpesanan !== null) {
+    try {
+        $sql = "SELECT p.idpesanan, p.jumlah, p.status, p.totalharga, pr.namaproduk 
+                FROM pesanan p 
+                JOIN produk pr ON p.idproduk = pr.idproduk 
+                WHERE p.idpengguna = :user_id 
+                AND p.status NOT IN ('Diterima', 'Batal')
+                AND p.idpesanan = :idpesanan";
+        
+        $query = $conn->prepare($sql);
+        $query->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+        $query->bindParam(':idpesanan', $search_idpesanan, PDO::PARAM_INT);
+        $query->execute();
+        $orders = $query->fetchAll(PDO::FETCH_ASSOC);
+
+        // Jika pencarian dilakukan tetapi tidak ada hasil
+        if (empty($orders) && empty($search_message)) {
+            $search_message = "Tidak ada pesanan ditemukan dengan nomor resi tersebut.";
+        }
+    } catch (PDOException $e) {
+        $search_message = "Terjadi kesalahan saat mengambil data pesanan.";
+        $orders = [];
+    }
+} elseif ($search_resi === '') {
+    // Pesan default saat halaman dimuat tanpa pencarian
+    $search_message = "Masukkan nomor resi untuk melihat status pesanan.";
 }
 
 // Fetch notifications for the user
@@ -48,7 +79,7 @@ try {
     $unread_count = 0;
 }
 
-// Mark notification as read when viewed (optional, can be triggered via a separate action)
+// Mark notification as read when viewed
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'mark_read' && isset($_POST['notif_id'])) {
     $notif_id = $_POST['notif_id'];
     try {
@@ -65,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
-// Proses konfirmasi penerimaan (unchanged from your original code)
+// Proses konfirmasi penerimaan (update to "Diterima")
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'confirm' && isset($_POST['order_id'])) {
     $order_id = $_POST['order_id'];
 
@@ -78,7 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $order = $query->fetch(PDO::FETCH_ASSOC);
 
         if ($order && $order['status'] === 'Dikirim') {
-            $sql = "UPDATE pesanan SET status = 'Selesai' WHERE idpesanan = :order_id AND idpengguna = :user_id";
+            $sql = "UPDATE pesanan SET status = 'Diterima' WHERE idpesanan = :order_id AND idpengguna = :user_id";
             $query = $conn->prepare($sql);
             $query->bindParam(':order_id', $order_id, PDO::PARAM_INT);
             $query->bindParam(':user_id', $user_id, PDO::PARAM_INT);
@@ -91,6 +122,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             exit();
         }
     } catch (PDOException $e) {
+        echo "<script>alert('Terjadi kesalahan. Silakan coba lagi.'); window.location.href='dashboardpelanggan.php';</script>";
+        exit();
+    }
+}
+
+// Proses pembatalan pesanan
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'cancel' && isset($_POST['order_id'])) {
+    $order_id = $_POST['order_id'];
+
+    try {
+        // Mulai transaksi
+        $conn->beginTransaction();
+
+        // Ambil status dan produk untuk notifikasi
+        $sql = "SELECT p.status, pr.namaproduk 
+                FROM pesanan p 
+                JOIN produk pr ON p.idproduk = pr.idproduk 
+                WHERE p.idpesanan = :order_id AND p.idpengguna = :user_id";
+        $query = $conn->prepare($sql);
+        $query->bindParam(':order_id', $order_id, PDO::PARAM_INT);
+        $query->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+        $query->execute();
+        $order = $query->fetch(PDO::FETCH_ASSOC);
+
+        if ($order && $order['status'] === 'Diproses') {
+            // Update status pesanan menjadi "Batal"
+            $sql = "UPDATE pesanan SET status = 'Batal' WHERE idpesanan = :order_id AND idpengguna = :user_id";
+            $query = $conn->prepare($sql);
+            $query->bindParam(':order_id', $order_id, PDO::PARAM_INT);
+            $query->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+            $query->execute();
+
+            // Kirim notifikasi ke admin (misalnya idpengguna admin = 1)
+            $admin_id = 1; // Ganti dengan ID admin yang sesuai di database Anda
+            $namaproduk = $order['namaproduk'];
+            $pesan = "Pesanan (ORD" . str_pad($order_id, 3, '0', STR_PAD_LEFT) . " - " . htmlspecialchars($namaproduk) . ") telah dibatalkan oleh pelanggan.";
+            $status_dibaca = 'Belum Dibaca';
+            $sql = "INSERT INTO notifikasi (idpengguna, pesan, statusdibaca) VALUES (:idpengguna, :pesan, :statusdibaca)";
+            $query = $conn->prepare($sql);
+            $query->bindParam(':idpengguna', $admin_id, PDO::PARAM_INT);
+            $query->bindParam(':pesan', $pesan, PDO::PARAM_STR);
+            $query->bindParam(':statusdibaca', $status_dibaca, PDO::PARAM_STR);
+            $query->execute();
+
+            // Commit transaksi
+            $conn->commit();
+
+            echo "<script>alert('Pesanan telah dibatalkan.'); window.location.href='dashboardpelanggan.php';</script>";
+            exit();
+        } else {
+            $conn->rollBack();
+            echo "<script>alert('Gagal membatalkan pesanan. Pesanan sudah dikirim atau tidak valid.'); window.location.href='dashboardpelanggan.php';</script>";
+            exit();
+        }
+    } catch (PDOException $e) {
+        $conn->rollBack();
         echo "<script>alert('Terjadi kesalahan. Silakan coba lagi.'); window.location.href='dashboardpelanggan.php';</script>";
         exit();
     }
@@ -278,6 +365,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         .dropdown-item:hover {
             background-color: #6b7280;
         }
+        /* Search bar styles */
+        .search-container {
+            margin-bottom: 2rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .search-container .input-group {
+            background-color: #5a6276;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .search-container .form-control {
+            background-color: transparent;
+            border: none;
+            color: #ffffff;
+        }
+        .search-container .form-control:focus {
+            box-shadow: none;
+            background-color: transparent;
+            color: #ffffff;
+        }
+        .search-container .form-control::placeholder {
+            color: #d1d5db;
+        }
+        .search-container .btn-search {
+            background-color: #f59e0b;
+            border: none;
+            color: #ffffff;
+            transition: background-color 0.3s ease;
+        }
+        .search-container .btn-search:hover {
+            background-color: #e07a5f;
+        }
+        .search-container .btn-reset {
+            background-color: #6b7280;
+            border: none;
+            color: #ffffff;
+            transition: background-color 0.3s ease;
+        }
+        .search-container .btn-reset:hover {
+            background-color: #e07a5f;
+        }
+        .default-message {
+            text-align: center;
+            color: #d1d5db;
+            font-size: 1rem;
+        }
         @media (max-width: 768px) {
             .content {
                 padding: 5rem 1rem 1rem;
@@ -292,6 +427,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             }
             .tracker-step p {
                 font-size: 0.7rem;
+            }
+            .search-container {
+                max-width: 100%;
             }
         }
     </style>
@@ -336,7 +474,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         <div class="dashboard-container">
             <h2 class="header-title mb-5">Selamat Datang, <?php echo htmlspecialchars($username); ?></h2>
 
-            <?php if ($orders): ?>
+            <!-- Search Bar -->
+            <div class="search-container">
+                <form method="GET" action="" class="input-group">
+                    <input type="text" name="resi" class="form-control" placeholder="Cari nomor resi (contoh: ORD001)" value="<?php echo htmlspecialchars($search_resi); ?>">
+                    <button type="submit" class="btn btn-search"><i class="fas fa-search"></i> Cari</button>
+                    <?php if ($search_resi !== ''): ?>
+                        <a href="dashboardpelanggan.php" class="btn btn-reset"><i class="fas fa-times"></i> Reset</a>
+                    <?php endif; ?>
+                </form>
+                <?php if ($search_message): ?>
+                    <div class="alert alert-warning mt-2" role="alert">
+                        <?php echo htmlspecialchars($search_message); ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <!-- Tampilan Pesanan (Hanya Muncul Jika Pencarian Valid) -->
+            <?php if (!empty($orders)): ?>
                 <?php foreach ($orders as $order): ?>
                     <div class="order-section my-5">
                         <h4>Pesanan</h4>
@@ -346,7 +501,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         </div>
                         <div class="tracker">
                             <?php
-                            $steps = ['Diproses', 'Dikirim', 'Selesai'];
+                            $steps = ['Diproses', 'Dikirim', 'Diterima'];
                             $currentIndex = array_search($order['status'], $steps);
                             ?>
                             <div class="tracker-step <?php echo $currentIndex === 0 ? 'current' : ''; ?>">
@@ -362,24 +517,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                             <div class="tracker-step <?php echo $currentIndex === 2 ? 'current' : ''; ?>">
                                 <i class="fas fa-check-circle mb-3"></i>
                                 <div class="circle"></div>
-                                <p>Selesai</p>
+                                <p>Diterima</p>
                             </div>
                             <div class="tracker-line"></div>
                         </div>
                         <!-- Form untuk konfirmasi penerimaan -->
-                        <form method="POST" action="" onsubmit="return confirm('Apakah Anda yakin telah menerima pesanan ini?');">
+                        <form method="POST" action="" onsubmit="return confirm('Apakah Anda yakin telah menerima pesanan ini?');" class="d-inline">
                             <input type="hidden" name="order_id" value="<?php echo htmlspecialchars($order['idpesanan']); ?>">
                             <input type="hidden" name="action" value="confirm">
                             <button type="submit" class="btn btn-success mt-3" 
                                     <?php echo $order['status'] !== 'Dikirim' ? 'disabled' : ''; ?>>Terima</button>
                         </form>
+                        <!-- Form untuk pembatalan pesanan -->
+                        <form method="POST" action="" onsubmit="return confirm('Apakah Anda yakin ingin membatalkan pesanan ini?');" class="d-inline">
+                            <input type="hidden" name="order_id" value="<?php echo htmlspecialchars($order['idpesanan']); ?>">
+                            <input type="hidden" name="action" value="cancel">
+                            <button type="submit" class="btn btn-danger mt-3 ms-2" 
+                                    <?php echo $order['status'] !== 'Diproses' ? 'disabled' : ''; ?>>Batal</button>
+                        </form>
                     </div>
                 <?php endforeach; ?>
-            <?php else: ?>
-                <p class="text-center">Tidak ada pesanan aktif saat ini.</p>
             <?php endif; ?>
         </div>
     </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 </body>
 </html>

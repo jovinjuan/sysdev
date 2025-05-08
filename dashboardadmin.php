@@ -4,33 +4,34 @@ require "config.php";
 // Cek apakah admin sudah login
 $admin_id = $_SESSION['admin_id'] ?? null;
 if (!isset($admin_id)) {
-    header("Location: login.php");
+    header("Location: index.php");
     exit();
 }
 
-// Hitung total penjualan (tanpa filter waktu)
+// Hitung total penjualan, pesanan, produk, dan produk stok nol
 try {
+    // Total Penjualan
     $sqlPenjualan = "SELECT SUM(grandtotal) as total_penjualan FROM penjualan";
     $queryPenjualan = $conn->prepare($sqlPenjualan);
     $queryPenjualan->execute();
     $resultPenjualan = $queryPenjualan->fetch(PDO::FETCH_ASSOC);
     $totalPenjualan = $resultPenjualan['total_penjualan'] ?? 0;
 
-    // Hitung total pesanan (tanpa filter waktu)
-    $sqlPesanan = "SELECT COUNT(idpesanan) as total_pesanan FROM pesanan";
+    // Total Pesanan (tidak termasuk yang dibatalkan)
+    $sqlPesanan = "SELECT COUNT(idpesanan) as total_pesanan FROM pesanan WHERE status != 'Batal'";
     $queryPesanan = $conn->prepare($sqlPesanan);
     $queryPesanan->execute();
     $resultPesanan = $queryPesanan->fetch(PDO::FETCH_ASSOC);
     $totalPesanan = $resultPesanan['total_pesanan'] ?? 0;
 
-    // Hitung total produk terdaftar
+    // Total Produk
     $sqlProduk = "SELECT COUNT(idproduk) as total_produk FROM produk";
     $queryProduk = $conn->prepare($sqlProduk);
     $queryProduk->execute();
     $resultProduk = $queryProduk->fetch(PDO::FETCH_ASSOC);
     $totalProduk = $resultProduk['total_produk'] ?? 0;
 
-    // Fetch products with zero stock
+    // Produk dengan stok nol
     $sqlZeroStock = "SELECT p.namaproduk, g.namagudang 
                      FROM produk p 
                      JOIN gudang g ON p.idgudang = g.idgudang 
@@ -38,12 +39,50 @@ try {
     $queryZeroStock = $conn->prepare($sqlZeroStock);
     $queryZeroStock->execute();
     $zero_stock_products = $queryZeroStock->fetchAll(PDO::FETCH_ASSOC);
+
+    // Fetch notifications for admin (semua notifikasi, tidak hanya pembatalan)
+    $sqlNotifikasi = "SELECT idpengguna, pesan, statusdibaca
+                      FROM notifikasi 
+                      WHERE idpengguna = :admin_id AND statusdibaca = 'Belum Dibaca'
+                      ORDER BY idnotifikasi DESC";
+    $queryNotifikasi = $conn->prepare($sqlNotifikasi);
+    $queryNotifikasi->bindParam(':admin_id', $admin_id, PDO::PARAM_INT);
+    $queryNotifikasi->execute();
+    $notifications = $queryNotifikasi->fetchAll(PDO::FETCH_ASSOC);
+
+    // Count unread notifications
+    $sqlUnread = "SELECT COUNT(*) 
+                  FROM notifikasi 
+                  WHERE idpengguna = :admin_id 
+                  AND statusdibaca = 'Belum Dibaca'";
+    $queryUnread = $conn->prepare($sqlUnread);
+    $queryUnread->bindParam(':admin_id', $admin_id, PDO::PARAM_INT);
+    $queryUnread->execute();
+    $unread_count = $queryUnread->fetchColumn();
 } catch (PDOException $e) {
     $totalPenjualan = 0;
     $totalPesanan = 0;
     $totalProduk = 0;
     $zero_stock_products = [];
+    $notifications = [];
+    $unread_count = 0;
     $error_message = "Terjadi kesalahan: " . $e->getMessage();
+}
+
+// Mark notification as read
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'mark_read' && isset($_POST['notif_id'])) {
+    $notif_id = $_POST['notif_id'];
+    try {
+        $sql = "UPDATE notifikasi SET statusdibaca = 'Dibaca' WHERE idnotifikasi = :notif_id AND idpengguna = :admin_id";
+        $query = $conn->prepare($sql);
+        $query->bindParam(':notif_id', $notif_id, PDO::PARAM_INT);
+        $query->bindParam(':admin_id', $admin_id, PDO::PARAM_INT);
+        $query->execute();
+        header("Location: index.php");
+        exit();
+    } catch (PDOException $e) {
+        $error_message = "Gagal menandai notifikasi sebagai dibaca: " . $e->getMessage();
+    }
 }
 ?>
 
@@ -134,11 +173,59 @@ try {
             color: #ffffff;
             text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
         }
+        /* Notification styles */
+        .notification-dropdown {
+            position: relative;
+            padding: 0.75rem 1.5rem;
+        }
+        .notification-bell {
+            color: #ffffff;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+        .notification-bell:hover {
+            color: #f59e0b;
+        }
+        .notification-count {
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            background-color: #e07a5f;
+            color: #ffffff;
+            border-radius: 50%;
+            padding: 2px 6px;
+            font-size: 0.7rem;
+        }
+        .dropdown-menu {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .dropdown-item {
+            color: #ffffff;
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+        .dropdown-item.unread {
+            background: rgba(245, 158, 11, 0.2);
+            font-weight: 600;
+        }
+        .dropdown-item.read {
+            background: transparent;
+        }
+        .dropdown-item:hover {
+            background: rgba(245, 158, 11, 0.3);
+        }
         @media (max-width: 768px) {
             .sidebar {
                 width: 80px;
             }
             .sidebar .nav-link span {
+                display: none;
+            }
+            .sidebar .notification-dropdown span {
                 display: none;
             }
             .content {
@@ -151,9 +238,10 @@ try {
     <!-- Sidebar -->
     <div class="sidebar d-flex flex-column">
         <h4 class="text-white text-center mb-4">Sistem Logistik</h4>
+        <!-- Navigation -->
         <ul class="nav flex-column">
             <li class="nav-item">
-                <a class="nav-link active" href="index.php"><i class="fas fa-home"></i><span>Home</span></a>
+                <a class="nav-link active" href="dashboardadmin.php"><i class="fas fa-home"></i><span>Home</span></a>
             </li>
             <li class="nav-item">
                 <a class="nav-link" href="pesanan.php"><i class="fas fa-shopping-cart"></i><span>Pesanan</span></a>
@@ -194,7 +282,7 @@ try {
                         </div>
                         <h5 class="card-title">Total Pesanan</h5>
                         <h3 class="card-value"><?php echo $totalPesanan; ?></h3>
-                        <p class="card-text">Pesanan hingga <?php echo date('F Y'); ?></p>
+                        <p class="card-text">Pesanan aktif hingga <?php echo date('F Y'); ?></p>
                     </div>
                 </div>
                 <!-- Total Produk -->
