@@ -29,7 +29,7 @@ if ($search_resi !== '') {
 $orders = [];
 if ($search_idpesanan !== null) {
     try {
-        $sql = "SELECT p.idpesanan, p.jumlah, p.status, p.totalharga, pr.namaproduk 
+        $sql = "SELECT p.idpesanan, p.jumlah, p.status, p.tanggalpengiriman, p.totalharga, pr.namaproduk 
                 FROM pesanan p 
                 JOIN produk pr ON p.idproduk = pr.idproduk 
                 WHERE p.idpengguna = :user_id 
@@ -497,7 +497,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         <h4>Pesanan</h4>
                         <div class="order-card mb-5">
                             <p>ORD<?php echo str_pad($order['idpesanan'], 3, '0', STR_PAD_LEFT); ?> - <?php echo htmlspecialchars($order['namaproduk']); ?> (<?php echo htmlspecialchars($order['jumlah']); ?>) - Rp <?php echo number_format($order['totalharga'], 0, ',', '.'); ?></p>
-                            <p class="status">Status: <?php echo htmlspecialchars($order['status']); ?></p>
+                            <p class="status">Status: <?php echo htmlspecialchars($order['status']); ?> | Estimasi Pengiriman: <?php echo htmlspecialchars($order['tanggalpengiriman'] ?? 'Belum diatur'); ?></p>
                         </div>
                         <div class="tracker">
                             <?php

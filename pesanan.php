@@ -11,7 +11,8 @@ if(isset($admin_id)){
         p.namaproduk, 
         o.jumlah, 
         o.status,
-        o.alamatpengiriman
+        o.alamatpengiriman,
+        o.tanggalpengiriman
     FROM pesanan o
     JOIN produk p ON o.idproduk = p.idproduk
     JOIN pengguna u ON o.idpengguna = u.id
@@ -19,7 +20,7 @@ if(isset($admin_id)){
     $query = $conn->prepare($sql);
     $query->execute();
     $orders = $query->fetchAll(PDO::FETCH_ASSOC);
-    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -133,10 +134,30 @@ if(isset($admin_id)){
             border-radius: 10px;
             padding: 0.5rem 1rem;
             transition: background 0.3s ease;
+            margin: 0 0.2rem;
         }
         .btn-custom:hover {
             background: #d97706;
             color: #ffffff;
+        }
+        .btn-success {
+            background: #28a745;
+            color: #ffffff;
+            border: none;
+            border-radius: 10px;
+            padding: 0.5rem 1rem;
+            transition: background 0.3s ease;
+            margin: 0 0.2rem;
+        }
+        .btn-success:hover {
+            background: #218838;
+            color: #ffffff;
+        }
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
         }
         @media (max-width: 768px) {
             .sidebar {
@@ -151,6 +172,10 @@ if(isset($admin_id)){
             .table-custom th, .table-custom td {
                 font-size: 0.9rem;
                 padding: 0.5rem;
+            }
+            .btn-custom, .btn-success {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.9rem;
             }
         }
     </style>
@@ -191,33 +216,64 @@ if(isset($admin_id)){
                         <th>Jumlah Pesanan</th>
                         <th>Alamat Pengiriman</th>
                         <th>Status Pesanan</th>
+                        <th>Tanggal Pengiriman</th>
                         <th>Aksi</th>
                     </tr>
                 <?php if (count($orders) > 0): 
-                    $i = 1 ;
+                    $i = 1;
                 ?>
                         <?php foreach ($orders as $order): ?>
                             <tr>
-                                <td><?php echo $i++ ;?></td>
+                                <td><?php echo $i++; ?></td>
                                 <td><?php echo htmlspecialchars($order['customer_name']); ?></td>
                                 <td><?php echo htmlspecialchars($order['namaproduk']); ?></td>
                                 <td><?php echo htmlspecialchars($order['jumlah']); ?></td>
                                 <td><?php echo htmlspecialchars($order['alamatpengiriman']); ?></td>
                                 <td><?php echo htmlspecialchars($order['status']); ?></td>
+                                <td><?php echo htmlspecialchars($order['tanggalpengiriman'] ?? 'Belum diatur'); ?></td>
                                 <td>
-                                    <a href="updatestatuspesanan.php?idpesanan=<?php echo $order['idpesanan']; ?>&status=Dikirim" class="btn btn-sm btn-custom">Update Status</a>
+                                    <div class="action-buttons">
+                                        <a href="updatestatuspesanan.php?idpesanan=<?php echo $order['idpesanan']; ?>&status=Dikirim" class="btn btn-sm btn-custom">Update Status</a>
+                                        <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#deliveryModal-<?php echo $order['idpesanan']; ?>">Atur Pengiriman</button>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="6" class="text-center">Belum ada pesanan yang masuk.</td>
+                            <td colspan="8" class="text-center">Belum ada pesanan yang masuk.</td>
                         </tr>
                     <?php endif; ?>
                 </table>
             </div>
         </div>
     </div>
+
+    <!-- Modals -->
+    <?php if (count($orders) > 0): ?>
+        <?php foreach ($orders as $order): ?>
+            <div class="modal fade" id="deliveryModal-<?php echo $order['idpesanan']; ?>" tabindex="-1" aria-labelledby="deliveryModalLabel-<?php echo $order['idpesanan']; ?>" aria-hidden="true">
+                <div class="modal-dialog d-flex justify-content-center">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title fw-bold" id="deliveryModalLabel-<?php echo $order['idpesanan']; ?>">Atur Pengiriman Pesanan</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form action="aturpengiriman.php" method="POST">
+                                <input type="hidden" name="idpesanan" value="<?php echo $order['idpesanan']; ?>">
+                                <div class="mb-3">
+                                    <label for="deliveryDate-<?php echo $order['idpesanan']; ?>" class="form-label">Estimasi Pengiriman</label>
+                                    <input type="date" class="form-control" id="deliveryDate-<?php echo $order['idpesanan']; ?>" name="tanggalpengiriman" required>
+                                </div>
+                                <button type="submit" class="btn btn-success">Simpan</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    <?php endif; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 </body>
